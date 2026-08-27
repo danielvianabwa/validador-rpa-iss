@@ -1,6 +1,6 @@
 """
 ================================================================================
-SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA - BWA GLOBAL (LAYOUT AJUSTADO 100%)
+SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA - BWA GLOBAL (TEMA CLARO 100% HTML)
 ================================================================================
 """
 
@@ -18,7 +18,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ESTILIZAÇÃO CSS DE ALTA PRIORIDADE PARA CORRIGIR INPUTS, TABELAS E FONTES
+# ESTILIZAÇÃO CSS DE ALTA PRIORIDADE - REMOÇÃO TOTAL DE TEMA ESCURO E FONTES GRANDES
 st.markdown("""
     <style>
         /* Fundo Geral Claro */
@@ -28,13 +28,13 @@ st.markdown("""
         }
         
         .block-container {
-            padding-top: 3rem !important;
-            padding-bottom: 3rem !important;
-            padding-left: 3rem !important;
-            padding-right: 3rem !important;
+            padding-top: 2.5rem !important;
+            padding-bottom: 2.5rem !important;
+            padding-left: 2.5rem !important;
+            padding-right: 2.5rem !important;
         }
 
-        /* Banner BWA */
+        /* Banner BWA - Título em Branco */
         .bwa-banner {
             background-color: #6A327E !important;
             border-radius: 10px !important;
@@ -60,16 +60,14 @@ st.markdown("""
             font-family: Arial, sans-serif !important;
         }
 
-        /* TÍTULOS E RÓTULOS */
+        /* TÍTULOS E RÓTULOS GIGANTES */
         label, p, span, h1, h2, h3, h4, .stMarkdown {
             font-size: 1.35rem !important;
             color: #111111 !important;
             font-weight: 700 !important;
         }
 
-        /* CORREÇÃO DO SELETOR DE DATA E INPUTS - ELIMINAR O FUNDO ESCURO */
-        div[data-testid="stDateInput"], 
-        div[data-testid="stDateInput"] *,
+        /* FORÇAR CAMPOS DE TEXTO E SELETORES COM FUNDO BRANCO E TEXTO ESCURO */
         div[data-baseweb="select"], div[data-baseweb="select"] *, 
         div[data-baseweb="input"], div[data-baseweb="input"] *, 
         div[data-baseweb="base-input"], div[data-baseweb="base-input"] *,
@@ -82,54 +80,48 @@ st.markdown("""
             border-radius: 8px !important;
         }
 
-        /* CALENDÁRIO POPUP EM TEMA CLARO */
-        div[data-baseweb="popover"], div[data-baseweb="popover"] *,
-        div[data-baseweb="calendar"], div[data-baseweb="calendar"] * {
-            background-color: #FFFFFF !important;
-            color: #000000 !important;
-            font-size: 1.25rem !important;
-            font-weight: bold !important;
-        }
-
-        div[data-baseweb="calendar"] button {
-            background-color: #FFFFFF !important;
-            color: #000000 !important;
-            font-size: 1.2rem !important;
-            border-radius: 6px !important;
-        }
-        div[data-baseweb="calendar"] button:hover {
-            background-color: #EADFF0 !important;
-            color: #4A2259 !important;
-        }
-
         div[role="listbox"] *, ul[role="listbox"] * {
             background-color: #FFFFFF !important;
             color: #000000 !important;
             font-size: 1.2rem !important;
         }
 
-        /* AJUSTE DAS TABELAS PARA APROVEITAR LARGURA SEM CORTAR PALAVRAS OU QUEBRAR LINHAS */
-        .stDataFrame, div[data-testid="stTable"], table, tbody, tr, td, th {
-            background-color: #FFFFFF !important;
-            color: #000000 !important;
-            font-size: 1.2rem !important;
-            border-color: #D1C0E0 !important;
-            white-space: normal !important;
-            word-wrap: break-word !important;
-        }
-
-        th {
-            background-color: #EADFF0 !important;
-            color: #4A2259 !important;
-            font-size: 1.25rem !important;
-            font-weight: 800 !important;
-        }
-
         textarea {
             height: 110px !important;
         }
 
-        /* BOTÃO PRINCIPAL COM TEXTO EM BRANCO PURO */
+        /* ESTILO PARA TABELAS HTML PERSONALIZADAS SEM FUNDO PRETO */
+        .bwa-table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            margin-top: 15px !important;
+            margin-bottom: 25px !important;
+            background-color: #FFFFFF !important;
+            border-radius: 8px !important;
+            overflow: hidden !important;
+            box-shadow: 0px 2px 8px rgba(0,0,0,0.08) !important;
+        }
+        .bwa-table th {
+            background-color: #EADFF0 !important;
+            color: #4A2259 !important;
+            font-size: 1.3rem !important;
+            font-weight: 800 !important;
+            padding: 14px 18px !important;
+            border: 1px solid #C4B0D8 !important;
+            text-align: left !important;
+        }
+        .bwa-table td {
+            background-color: #FFFFFF !important;
+            color: #000000 !important;
+            font-size: 1.25rem !important;
+            font-weight: 600 !important;
+            padding: 12px 18px !important;
+            border: 1px solid #D1C0E0 !important;
+            white-space: normal !important;
+            word-wrap: break-word !important;
+        }
+
+        /* BOTÕES GIGANTES BWA COM TEXTO EM BRANCO PURO */
         .stButton>button, .stDownloadButton>button {
             background-color: #6A327E !important;
             color: #FFFFFF !important;
@@ -365,7 +357,7 @@ if "log_atualizacoes" not in st.session_state:
         {"data": f"{DATA_CONSULTA} 14:30", "municipio": "Rio de Janeiro / RJ", "detalhe": "Regra do ISS Autônomo Fixo confirmada: Isenção de retenção na fonte quando cadastrado na Prefeitura."},
     ]
 
-# GERADOR DO COMPROVANTE FISCAL
+# GERADOR DO COMPROVANTE FISCAL EM HTML COM ROXO BWA E TEXTO BRANCO
 def gerar_comprovante_rpa_bytes(res_dados: dict, rpa_input: RPAData) -> str:
     html_content = f"""
     <html>
@@ -579,7 +571,13 @@ with tabs[0]:
         descricao = st.text_area("Descrição do Serviço (Opcional)", value="", placeholder="ex: Consultoria Técnica em TI")
         
         valor_bruto = st.number_input("Valor Bruto do RPA (R$)", min_value=0.0, value=0.0, step=100.0)
-        data_pagamento = st.date_input("Data de Pagamento do RPA", value=datetime.date.today(), format="DD/MM/YYYY")
+        
+        # MÁSCARA E INPUT TEXTO DE DATA PARA PREVENIR CAMPO PRETO
+        data_str = st.text_input("Data de Pagamento do RPA (DD/MM/AAAA)", value=datetime.date.today().strftime('%d/%m/%Y'))
+        try:
+            data_pagamento = datetime.datetime.strptime(data_str.strip(), "%d/%m/%Y").date()
+        except Exception:
+            data_pagamento = datetime.date.today()
 
     with col2:
         st.markdown("### 2. Enquadramento Territorial e Fiscal")
@@ -682,7 +680,7 @@ with tabs[0]:
                         "11. Vencimento ISS": res['venc_iss'] if res['deve_reter'] else 'Isento na Fonte'
                     })
 
-# --- TAB 2: TABELAS VIGENTES ---
+# --- TAB 2: TABELAS VIGENTES (HTML CLARO RENDERIZADO) ---
 with tabs[1]:
     st.header(f"📊 Tabelas Oficiais Vigentes ({ANO_CONSULTA})")
     st.success(f"🔗 **Status da Consulta:** {PARAMETROS_INSS['fonte']} | Dados validados em **{DATA_CONSULTA}**.")
@@ -691,33 +689,54 @@ with tabs[1]:
     
     with col_t1:
         st.subheader("Tabela INSS — Contribuinte Individual")
-        df_inss = pd.DataFrame([
-            {
-                "Categoria": "Autônomo / Prestador RPA (PJ)", 
-                "Alíquota RGPS": "11%", 
-                "Teto Máximo do Desconto": f"R$ {PARAMETROS_INSS['desconto_teto']:,.2f}".replace(".", ","), 
-                "Salário de Contribuição Máximo": f"R$ {PARAMETROS_INSS['base_teto']:,.2f}".replace(".", ",")
-            }
-        ])
-        st.dataframe(df_inss, use_container_width=True, hide_index=True)
+        html_inss = f"""
+        <table class="bwa-table">
+            <thead>
+                <tr><th>Categoria</th><th>Alíquota RGPS</th><th>Teto Máximo Desconto</th><th>Salário Contribuição Máximo</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Autônomo / Prestador RPA (PJ)</td><td>11%</td><td>R$ {PARAMETROS_INSS['desconto_teto']:,.2f}</td><td>R$ {PARAMETROS_INSS['base_teto']:,.2f}</td></tr>
+            </tbody>
+        </table>
+        """
+        st.markdown(html_inss, unsafe_allow_html=True)
 
     with col_t2:
         st.subheader("Tabela Progressiva IRRF — Imposto de Renda")
-        df_irrf = pd.DataFrame([
-            {"Faixa de Base de Cálculo (R$)": "Até R$ 2.259,20", "Alíquota": "Isento", "Dedução da Parcela (R$)": "R$ 0,00"},
-            {"Faixa de Base de Cálculo (R$)": "De R$ 2.259,21 até R$ 2.826,65", "Alíquota": "7,5%", "Dedução da Parcela (R$)": "R$ 169,44"},
-            {"Faixa de Base de Cálculo (R$)": "De R$ 2.826,66 até R$ 3.751,05", "Alíquota": "15,0%", "Dedução da Parcela (R$)": "R$ 381,44"},
-            {"Faixa de Base de Cálculo (R$)": "De R$ 3.751,06 até R$ 4.664,68", "Alíquota": "22,5%", "Dedução da Parcela (R$)": "R$ 662,77"},
-            {"Faixa de Base de Cálculo (R$)": "Acima de R$ 4.664,68", "Alíquota": "27,5%", "Dedução da Parcela (R$)": "R$ 896,00"}
-        ])
-        st.dataframe(df_irrf, use_container_width=True, hide_index=True)
+        html_irrf = """
+        <table class="bwa-table">
+            <thead>
+                <tr><th>Faixa de Base de Cálculo (R$)</th><th>Alíquota</th><th>Dedução da Parcela (R$)</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Até R$ 2.259,20</td><td>Isento</td><td>R$ 0,00</td></tr>
+                <tr><td>De R$ 2.259,21 até R$ 2.826,65</td><td>7,5%</td><td>R$ 169,44</td></tr>
+                <tr><td>De R$ 2.826,66 até R$ 3.751,05</td><td>15,0%</td><td>R$ 381,44</td></tr>
+                <tr><td>De R$ 3.751,06 até R$ 4.664,68</td><td>22,5%</td><td>R$ 662,77</td></tr>
+                <tr><td>Acima de R$ 4.664,68</td><td>27,5%</td><td>R$ 896,00</td></tr>
+            </tbody>
+        </table>
+        """
+        st.markdown(html_irrf, unsafe_allow_html=True)
 
 # --- TAB 3: AGENTE DE AUTO-ATUALIZAÇÃO ---
 with tabs[2]:
     st.header("🤖 Agente Autônomo BWA de Inteligência Legislativa")
     st.success(f"✅ **Varredura em {DATA_CONSULTA}:** Conexão estabelecida com os servidores do Governo Federal e Prefeituras.")
-    df_logs = pd.DataFrame(st.session_state["log_atualizacoes"])
-    st.dataframe(df_logs, use_container_width=True, hide_index=True)
+    
+    # RENDERIZAÇÃO EM TABELA HTML COM CABEÇALHO EM MAIÚSCULAS
+    html_logs = """
+    <table class="bwa-table">
+        <thead>
+            <tr><th>DATA E HORA</th><th>MUNICÍPIO / ESCOPO</th><th>DETALHE DA ATUALIZAÇÃO</th></tr>
+        </thead>
+        <tbody>
+    """
+    for log in st.session_state["log_atualizacoes"]:
+        html_logs += f"<tr><td>{log['data']}</td><td>{log['municipio']}</td><td>{log['detalhe']}</td></tr>"
+    html_logs += "</tbody></table>"
+    
+    st.markdown(html_logs, unsafe_allow_html=True)
 
 # --- TAB 4: TABELA DE ISS POR MUNICÍPIO ---
 with tabs[3]:
@@ -726,16 +745,17 @@ with tabs[3]:
     municipio_sel = st.selectbox("Selecione o Município para Visualizar:", sorted(muns_validos))
     dados_mun = st.session_state["banco_legisla_iss"][municipio_sel]
     
-    lista_tabela = []
+    html_mun = """
+    <table class="bwa-table">
+        <thead>
+            <tr><th>Código e Descrição do Serviço (LC 116/03)</th><th>Alíquota ISS</th><th>Permite Emissão de RPA?</th></tr>
+        </thead>
+        <tbody>
+    """
     for cod_desc, info in dados_mun.items():
         aliquota_perc = f"{info['aliquota'] * 100:.2f}%".replace(".", ",")
         status_rpa = "✅ Emissão Liberada" if info["aceita_rpa"] else "❌ Proibido (Exige NFS-e)"
-        
-        lista_tabela.append({
-            "Código e Descrição do Serviço (LC 116/03)": cod_desc,
-            "Alíquota ISS": aliquota_perc,
-            "Permite Emissão de RPA?": status_rpa
-        })
-        
-    df_exibicao = pd.DataFrame(lista_tabela)
-    st.dataframe(df_exibicao, use_container_width=True, hide_index=True)
+        html_mun += f"<tr><td>{cod_desc}</td><td>{aliquota_perc}</td><td>{status_rpa}</td></tr>"
+    html_mun += "</tbody></table>"
+    
+    st.markdown(html_mun, unsafe_allow_html=True)
