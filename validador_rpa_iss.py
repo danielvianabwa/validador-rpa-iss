@@ -1,6 +1,6 @@
 """
 ================================================================================
-SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA - BWA GLOBAL (REGRA DE FALLBACK DE ISS)
+SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA - BWA GLOBAL (CHECKBOX AMPLIADO)
 ================================================================================
 """
 
@@ -18,7 +18,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ESTILIZAÇÃO CSS DE ALTA PRIORIDADE
+# ESTILIZAÇÃO CSS DE ALTA PRIORIDADE COM AUMENTO DO CHECKBOX CCM
 st.markdown("""
     <style>
         /* Fundo Geral Claro */
@@ -67,6 +67,27 @@ st.markdown("""
             font-weight: 700 !important;
         }
 
+        /* AUMENTO E DESTAQUE ESPECÍFICO DO CHECKBOX CCM */
+        div[data-testid="stCheckbox"] {
+            margin-top: 15px !important;
+            padding: 10px 14px !important;
+            background-color: #FFFFFF !important;
+            border: 2px solid #A882C2 !important;
+            border-radius: 8px !important;
+            display: flex !important;
+            align-items: center !important;
+        }
+        div[data-testid="stCheckbox"] label span {
+            font-size: 1.35rem !important;
+            font-weight: 800 !important;
+            color: #4A2259 !important;
+        }
+        div[data-testid="stCheckbox"] input[type="checkbox"] {
+            width: 24px !important;
+            height: 24px !important;
+            cursor: pointer !important;
+        }
+
         /* FORÇAR CAMPOS DE TEXTO E SELETORES COM FUNDO BRANCO E TEXTO ESCURO */
         div[data-baseweb="select"], div[data-baseweb="select"] *, 
         div[data-baseweb="input"], div[data-baseweb="input"] *, 
@@ -86,7 +107,7 @@ st.markdown("""
             font-size: 1.2rem !important;
         }
 
-        /* ESTILO PARA TABELAS HTML PERSONALIZADAS SEM FUNDO PRETO */
+        /* ESTILO PARA TABELAS HTML PERSONALIZADAS */
         .bwa-table {
             width: 100% !important;
             border-collapse: collapse !important;
@@ -121,7 +142,7 @@ st.markdown("""
             height: 110px !important;
         }
 
-        /* BOTÕES GIGANTES BWA COM TEXTO EM BRANCO PURO */
+        /* BOTÕES GIGANTES BWA */
         .stButton>button, .stDownloadButton>button {
             background-color: #6A327E !important;
             color: #FFFFFF !important;
@@ -315,7 +336,6 @@ LISTA_SP_BLOQUEADO_COMPLETA = {
 
 MUNICIPIOS_OPCOES = [
     "-- Selecione o Município / UF --",
-    "➕ Outro Município (Digitar abaixo)",
     "Cabedelo / PB", "João Pessoa / PB", "Campina Grande / PB",
     "Rio de Janeiro / RJ", "São Paulo / SP", "Belo Horizonte / MG", "Brasília / DF",
     "Salvador / BA", "Fortaleza / CE", "Curitiba / PR", "Manaus / AM",
@@ -351,14 +371,14 @@ if "banco_legisla_iss" not in st.session_state:
         "Cabedelo / PB": LISTA_SERVICOS_LC116_COMPLETA,
     }
     for mun in MUNICIPIOS_OPCOES:
-        if mun not in ["-- Selecione o Município / UF --", "➕ Outro Município (Digitar abaixo)"] and mun not in banco:
+        if mun != "-- Selecione o Município / UF --" and mun not in banco:
             banco[mun] = LISTA_SERVICOS_LC116_COMPLETA
             
     st.session_state["banco_legisla_iss"] = banco
 
 if "log_atualizacoes" not in st.session_state:
     st.session_state["log_atualizacoes"] = [
-        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": "Módulo de auto-cadastro ativado: Municípios não cadastrados recebem a regra de fallback da LC 116/03 (alíquota padrão 5%)."},
+        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": "Ampliação visual: Checkbox CCM com botão destacado e fonte ampliada."},
         {"data": f"{DATA_CONSULTA} 14:30", "municipio": "Rio de Janeiro / RJ", "detalhe": "Regra do ISS Autônomo Fixo confirmada: Isenção de retenção na fonte quando cadastrado na Prefeitura."},
     ]
 
@@ -453,11 +473,10 @@ class MotorTributarioISS:
         mun_execucao = rpa.municipio_execucao
         cod_servico = rpa.codigo_servico
 
-        # AUTO-CADASTRO TEMPORÁRIO CASO O MUNICÍPIO SEJA DIGITADO MANUAMENTE
+        e_estimativa_tomador = False
         if mun_tomador not in self.db:
             self.db[mun_tomador] = LISTA_SERVICOS_LC116_COMPLETA
-        if mun_prestador not in self.db:
-            self.db[mun_prestador] = LISTA_SERVICOS_LC116_COMPLETA
+            e_estimativa_tomador = True
 
         regras_tomador = self.db.get(mun_tomador, LISTA_SERVICOS_LC116_COMPLETA)
         info_servico_tomador = {"aliquota": 0.05, "aceita_rpa": True}
@@ -499,6 +518,9 @@ class MotorTributarioISS:
         else:
             deve_reter = False
             justificativa = f"Sem retenção na fonte. O ISS pertence a {municipio_credor} e será recolhido diretamente pelo prestador cadastrado."
+
+        if e_estimativa_tomador and deve_reter:
+            justificativa += " [⚠️ ALÍQUOTA PADRÃO APLICADA (5,00%): O município selecionado não possui tabela de exceção cadastrada. Foi aplicada a alíquota teto nacional da LC 116/2003.]"
 
         regras_credor = self.db.get(municipio_credor, LISTA_SERVICOS_LC116_COMPLETA)
         info_servico_credor = {"aliquota": 0.05, "aceita_rpa": True}
@@ -594,26 +616,9 @@ with tabs[0]:
         opcoes_servicos = ["-- Selecione o Código do Serviço --"] + list(LISTA_SERVICOS_LC116_COMPLETA.keys())
         cod_servico_sel = st.selectbox("Código do Serviço (LC 116/03)", opcoes_servicos, index=0)
 
-        # SELEÇÃO DO TOMADOR COM DIGITAÇÃO LIVRE
-        mun_tomador_sel = st.selectbox("Município do Tomador (Sua Empresa)", MUNICIPIOS_OPCOES, index=0)
-        if mun_tomador_sel == "➕ Outro Município (Digitar abaixo)":
-            municipio_tomador = st.text_input("Digite o Município / UF do Tomador:", placeholder="ex: Cabedelo / PB").strip()
-        else:
-            municipio_tomador = mun_tomador_sel
-
-        # SELEÇÃO DO PRESTADOR COM DIGITAÇÃO LIVRE
-        mun_prestador_sel = st.selectbox("Município de Domicílio do Prestador", MUNICIPIOS_OPCOES, index=0)
-        if mun_prestador_sel == "➕ Outro Município (Digitar abaixo)":
-            municipio_prestador = st.text_input("Digite o Município / UF do Prestador:", placeholder="ex: Cabedelo / PB").strip()
-        else:
-            municipio_prestador = mun_prestador_sel
-
-        # SELEÇÃO DO LOCAL DE EXECUÇÃO
-        mun_exec_sel = st.selectbox("Município de Execução do Serviço", MUNICIPIOS_OPCOES, index=0)
-        if mun_exec_sel == "➕ Outro Município (Digitar abaixo)":
-            municipio_execucao = st.text_input("Digite o Município / UF de Execução:", placeholder="ex: Cabedelo / PB").strip()
-        else:
-            municipio_execucao = mun_exec_sel
+        municipio_tomador = st.selectbox("Município do Tomador (Sua Empresa)", MUNICIPIOS_OPCOES, index=0)
+        municipio_prestador = st.selectbox("Município de Domicílio do Prestador", MUNICIPIOS_OPCOES, index=0)
+        municipio_execucao = st.selectbox("Município de Execução do Serviço", MUNICIPIOS_OPCOES, index=0)
 
         possui_ccm = st.checkbox("Prestador possui cadastro (CCM) na Prefeitura?", value=True)
 
@@ -626,13 +631,13 @@ with tabs[0]:
             st.error("⚠️ **Valor Inválido:** O Valor Bruto do RPA deve ser maior que R$ 0,00.")
         elif cod_servico_sel == "-- Selecione o Código do Serviço --":
             st.error("⚠️ **Seleção Obrigatória:** Selecione o Código do Serviço (LC 116/03).")
-        elif not municipio_tomador or municipio_tomador == "-- Selecione o Município / UF --":
-            st.error("⚠️ **Seleção Obrigatória:** Selecione ou digite o Município do Tomador.")
-        elif not municipio_prestador or municipio_prestador == "-- Selecione o Município / UF --":
-            st.error("⚠️ **Seleção Obrigatória:** Selecione ou digite o Município do Prestador.")
+        elif municipio_tomador == "-- Selecione o Município / UF --":
+            st.error("⚠️ **Seleção Obrigatória:** Selecione o Município do Tomador.")
+        elif municipio_prestador == "-- Selecione o Município / UF --":
+            st.error("⚠️ **Seleção Obrigatória:** Selecione o Município do Prestador.")
         else:
             cod_servico_clean = cod_servico_sel.split(" - ")[0]
-            if not municipio_execucao or municipio_execucao == "-- Selecione o Município / UF --":
+            if municipio_execucao == "-- Selecione o Município / UF --":
                 municipio_execucao = municipio_prestador
 
             rpa = RPAData(
@@ -768,7 +773,7 @@ with tabs[2]:
 # --- TAB 4: TABELA DE ISS POR MUNICÍPIO ---
 with tabs[3]:
     st.header("⚙️ Tabela Vigente de Alíquotas por Município")
-    muns_validos = [m for m in st.session_state["banco_legisla_iss"].keys() if m not in ["-- Selecione o Município / UF --", "➕ Outro Município (Digitar abaixo)"]]
+    muns_validos = [m for m in st.session_state["banco_legisla_iss"].keys() if m != "-- Selecione o Município / UF --"]
     municipio_sel = st.selectbox("Selecione o Município para Visualizar:", sorted(muns_validos))
     dados_mun = st.session_state["banco_legisla_iss"][municipio_sel]
     
