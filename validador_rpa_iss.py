@@ -1,6 +1,6 @@
 """
 ================================================================================
-SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA - BWA GLOBAL (LAYOUT AMPLIADO & CORES CORRIGIDAS)
+SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA - BWA GLOBAL (LAYOUT AJUSTADO 100%)
 ================================================================================
 """
 
@@ -18,7 +18,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ESTILIZAÇÃO CSS AVANÇADA - FONTES GRANDES + CONTRASTE ROXO/BRANCO GARANTIDO
+# ESTILIZAÇÃO CSS DE ALTA PRIORIDADE PARA CORRIGIR INPUTS, TABELAS E FONTES
 st.markdown("""
     <style>
         /* Fundo Geral Claro */
@@ -34,7 +34,7 @@ st.markdown("""
             padding-right: 3rem !important;
         }
 
-        /* Banner BWA - Título em Branco */
+        /* Banner BWA */
         .bwa-banner {
             background-color: #6A327E !important;
             border-radius: 10px !important;
@@ -60,14 +60,16 @@ st.markdown("""
             font-family: Arial, sans-serif !important;
         }
 
-        /* TÍTULOS E RÓTULOS GIGANTES */
+        /* TÍTULOS E RÓTULOS */
         label, p, span, h1, h2, h3, h4, .stMarkdown {
             font-size: 1.35rem !important;
             color: #111111 !important;
             font-weight: 700 !important;
         }
 
-        /* FORÇAR CAMPOS DE TEXTO, SELETORES E DATAS COM FUNDO BRANCO E TEXTO ESCURO */
+        /* CORREÇÃO DO SELETOR DE DATA E INPUTS - ELIMINAR O FUNDO ESCURO */
+        div[data-testid="stDateInput"], 
+        div[data-testid="stDateInput"] *,
         div[data-baseweb="select"], div[data-baseweb="select"] *, 
         div[data-baseweb="input"], div[data-baseweb="input"] *, 
         div[data-baseweb="base-input"], div[data-baseweb="base-input"] *,
@@ -80,7 +82,7 @@ st.markdown("""
             border-radius: 8px !important;
         }
 
-        /* REMOVER CAIXA ESCURA DO CALENDÁRIO POPUP */
+        /* CALENDÁRIO POPUP EM TEMA CLARO */
         div[data-baseweb="popover"], div[data-baseweb="popover"] *,
         div[data-baseweb="calendar"], div[data-baseweb="calendar"] * {
             background-color: #FFFFFF !important;
@@ -106,19 +108,28 @@ st.markdown("""
             font-size: 1.2rem !important;
         }
 
-        /* TABELAS NATIVAS EM TEMA CLARO */
+        /* AJUSTE DAS TABELAS PARA APROVEITAR LARGURA SEM CORTAR PALAVRAS OU QUEBRAR LINHAS */
         .stDataFrame, div[data-testid="stTable"], table, tbody, tr, td, th {
             background-color: #FFFFFF !important;
             color: #000000 !important;
             font-size: 1.2rem !important;
             border-color: #D1C0E0 !important;
+            white-space: normal !important;
+            word-wrap: break-word !important;
+        }
+
+        th {
+            background-color: #EADFF0 !important;
+            color: #4A2259 !important;
+            font-size: 1.25rem !important;
+            font-weight: 800 !important;
         }
 
         textarea {
             height: 110px !important;
         }
 
-        /* BOTÕES GIGANTES BWA COM TEXTO EM BRANCO PURO */
+        /* BOTÃO PRINCIPAL COM TEXTO EM BRANCO PURO */
         .stButton>button, .stDownloadButton>button {
             background-color: #6A327E !important;
             color: #FFFFFF !important;
@@ -350,11 +361,11 @@ if "banco_legisla_iss" not in st.session_state:
 
 if "log_atualizacoes" not in st.session_state:
     st.session_state["log_atualizacoes"] = [
-        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": "Interface BWA: Ampliação geral das fontes e correção da tabela do recibo com fundo roxo e texto branco."},
+        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": "Design BWA: Fontes ampliadas, cabeçalho e tabelas em tema claro, e gerador de comprovante ativo."},
         {"data": f"{DATA_CONSULTA} 14:30", "municipio": "Rio de Janeiro / RJ", "detalhe": "Regra do ISS Autônomo Fixo confirmada: Isenção de retenção na fonte quando cadastrado na Prefeitura."},
     ]
 
-# GERADOR DO DOCUMENTO DE RECIBO (COMPROVANTE FISCAL COM TEXTO EM BRANCO NO ROXO)
+# GERADOR DO COMPROVANTE FISCAL
 def gerar_comprovante_rpa_bytes(res_dados: dict, rpa_input: RPAData) -> str:
     html_content = f"""
     <html>
@@ -369,7 +380,6 @@ def gerar_comprovante_rpa_bytes(res_dados: dict, rpa_input: RPAData) -> str:
             table {{ width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; background-color: #ffffff; }}
             th, td {{ border: 1px solid #C4B0D8; padding: 8px; text-align: left; color: #000000; }}
             th {{ background-color: #EADFF0; color: #4A2259; font-weight: bold; }}
-            /* VALOR LÍQUIDO EM BRANCO NO ROXO BWA */
             .tot {{ background-color: #6A327E !important; color: #FFFFFF !important; font-weight: bold; }}
             .tot td {{ color: #FFFFFF !important; background-color: #6A327E !important; }}
             .footer {{ margin-top: 40px; text-align: center; font-size: 11px; color: #555; }}
@@ -558,7 +568,7 @@ tabs = st.tabs([
     "⚙️ Tabela de ISS por Município"
 ])
 
-# --- TAB 1: ANÁLISE DE RPA (REESTRUTURADO EM 2 COLUNAS AMPLAS) ---
+# --- TAB 1: ANÁLISE DE RPA ---
 with tabs[0]:
     col1, col2 = st.columns([1, 1])
     
@@ -689,7 +699,7 @@ with tabs[1]:
                 "Salário de Contribuição Máximo": f"R$ {PARAMETROS_INSS['base_teto']:,.2f}".replace(".", ",")
             }
         ])
-        st.table(df_inss)
+        st.dataframe(df_inss, use_container_width=True, hide_index=True)
 
     with col_t2:
         st.subheader("Tabela Progressiva IRRF — Imposto de Renda")
@@ -700,14 +710,14 @@ with tabs[1]:
             {"Faixa de Base de Cálculo (R$)": "De R$ 3.751,06 até R$ 4.664,68", "Alíquota": "22,5%", "Dedução da Parcela (R$)": "R$ 662,77"},
             {"Faixa de Base de Cálculo (R$)": "Acima de R$ 4.664,68", "Alíquota": "27,5%", "Dedução da Parcela (R$)": "R$ 896,00"}
         ])
-        st.table(df_irrf)
+        st.dataframe(df_irrf, use_container_width=True, hide_index=True)
 
 # --- TAB 3: AGENTE DE AUTO-ATUALIZAÇÃO ---
 with tabs[2]:
     st.header("🤖 Agente Autônomo BWA de Inteligência Legislativa")
     st.success(f"✅ **Varredura em {DATA_CONSULTA}:** Conexão estabelecida com os servidores do Governo Federal e Prefeituras.")
     df_logs = pd.DataFrame(st.session_state["log_atualizacoes"])
-    st.table(df_logs)
+    st.dataframe(df_logs, use_container_width=True, hide_index=True)
 
 # --- TAB 4: TABELA DE ISS POR MUNICÍPIO ---
 with tabs[3]:
@@ -728,4 +738,4 @@ with tabs[3]:
         })
         
     df_exibicao = pd.DataFrame(lista_tabela)
-    st.table(df_exibicao)
+    st.dataframe(df_exibicao, use_container_width=True, hide_index=True)
