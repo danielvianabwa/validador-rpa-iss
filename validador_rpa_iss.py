@@ -1,6 +1,6 @@
 """
 ================================================================================
-SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA - BWA GLOBAL (NOVO DESIGN + PDF)
+SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA - BWA GLOBAL (TEMA CLARO FORÇADO + PDF)
 ================================================================================
 """
 
@@ -10,8 +10,6 @@ import json
 from dataclasses import dataclass
 from typing import Dict
 import datetime
-import io
-from fpdf import FPDF
 
 st.set_page_config(
     page_title="BWA Global | Validador de RPA & ISS",
@@ -20,122 +18,121 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ESTILIZAÇÃO VISUAL BWA GLOBAL - FORÇAR TEMA CLARO E FONTES GRANDES
+# ESTILIZAÇÃO AGRESSIVA PARA SOBRESCREVER O DARK MODE DO STREAMLIT
 st.markdown("""
     <style>
-        /* Fundo Geral da Aplicação */
-        .stApp {
+        /* Forçar Fundo Geral Claro */
+        html, body, .stApp, [data-testid="stAppViewContainer"] {
             background-color: #F4F0F6 !important;
-            color: #1A1A1A !important;
+            color: #000000 !important;
         }
-        /* Margem Superior sem Cortar o Topo */
+        
         .block-container {
-            padding-top: 3.5rem !important;
+            padding-top: 2.5rem !important;
             padding-bottom: 2rem !important;
-            padding-left: 2.5rem !important;
-            padding-right: 2.5rem !important;
+            padding-left: 2rem !important;
+            padding-right: 2rem !important;
         }
-        /* Cabeçalho Destacado BWA */
+
+        /* Cabeçalho BWA Ampliado */
         .bwa-header {
-            background-color: #6A327E;
-            color: #FFFFFF;
-            padding: 1.2rem 2rem;
-            border-radius: 10px;
-            margin-bottom: 1.5rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.15);
+            background-color: #6A327E !important;
+            color: #FFFFFF !important;
+            padding: 1.5rem 2rem !important;
+            border-radius: 10px !important;
+            margin-bottom: 1.5rem !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            box-shadow: 0px 4px 12px rgba(0,0,0,0.15) !important;
         }
         .bwa-header h1 {
             color: #FFFFFF !important;
-            font-size: 2rem !important;
+            font-size: 2.2rem !important;
             margin: 0 !important;
-            padding: 0 !important;
-            font-weight: 700;
+            font-weight: 800 !important;
         }
         .bwa-status {
-            font-size: 1.05rem;
-            color: #F0E6F6;
-            font-weight: 600;
+            font-size: 1.15rem !important;
+            color: #F0E6F6 !important;
+            font-weight: 600 !important;
         }
-        /* Botões Ampliados BWA */
-        .stButton>button {
+
+        /* AUMENTAR TODOS OS RÓTULOS (LABELS) */
+        label, p, span, div {
+            font-size: 1.15rem !important;
+            color: #222222 !important;
+            font-weight: 700 !important;
+        }
+
+        /* FORÇAR COR BRANCA ABSOLUTA EM TODOS OS CAMPOS E SELECTBOXES DO STREAMLIT */
+        div[data-baseweb="select"], div[data-baseweb="select"] *, 
+        div[data-baseweb="input"], div[data-baseweb="input"] *, 
+        input, select, textarea {
+            background-color: #FFFFFF !important;
+            color: #000000 !important;
+            border-color: #A882C2 !important;
+            font-size: 1.15rem !important;
+            font-weight: 600 !important;
+        }
+
+        /* Forçar texto dos itens dos seletores para preto */
+        div[role="listbox"] *, ul[role="listbox"] * {
+            background-color: #FFFFFF !important;
+            color: #000000 !important;
+            font-size: 1.1rem !important;
+        }
+
+        textarea {
+            height: 90px !important;
+        }
+
+        /* BOTÕES GIGANTES BWA */
+        .stButton>button, .stDownloadButton>button {
             background-color: #6A327E !important;
             color: #FFFFFF !important;
             border-radius: 8px !important;
-            font-weight: bold !important;
+            font-weight: 800 !important;
             border: none !important;
-            padding: 0.8rem 1.8rem !important;
-            font-size: 1.2rem !important;
-            margin-top: 0.5rem !important;
-            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+            padding: 1rem 2rem !important;
+            font-size: 1.25rem !important;
+            margin-top: 0.8rem !important;
+            box-shadow: 0px 4px 10px rgba(0,0,0,0.2) !important;
         }
-        .stButton>button:hover {
-            background-color: #532664 !important;
+        .stButton>button:hover, .stDownloadButton>button:hover {
+            background-color: #4A2259 !important;
             color: #FFFFFF !important;
         }
-        /* Rótulos e Subtítulos */
-        label {
-            font-size: 1.05rem !important;
-            font-weight: 700 !important;
-            color: #4A2259 !important;
-            margin-bottom: 0.3rem !important;
-        }
-        .stMarkdown p, .stMarkdown div {
-            font-size: 1.05rem !important;
-            color: #1A1A1A !important;
-        }
-        /* ELIMINAR CAMPOS PRETOS - FORÇAR BRANCO */
-        .stTextInput input, .stSelectbox select, .stNumberInput input, .stDateInput input, [data-baseweb="select"] {
-            padding: 0.6rem 0.9rem !important;
-            font-size: 1.1rem !important;
-            border-radius: 8px !important;
-            border: 2px solid #C4B0D8 !important;
-            background-color: #FFFFFF !important;
-            color: #1A1A1A !important;
-        }
-        div[data-baseweb="select"] > div {
-            background-color: #FFFFFF !important;
-            color: #1A1A1A !important;
-            border-radius: 8px !important;
-        }
-        textarea {
-            height: 85px !important;
-            font-size: 1.05rem !important;
-            background-color: #FFFFFF !important;
-            color: #1A1A1A !important;
-            border: 2px solid #C4B0D8 !important;
-            border-radius: 8px !important;
-        }
-        /* ABAS SUPERIORES COM TEXTO VISÍVEL */
+
+        /* CORREÇÃO VISUAL DAS ABAS SUPERIORES */
         .stTabs [data-baseweb="tab-list"] {
-            gap: 12px;
-            margin-bottom: 1.2rem;
+            gap: 12px !important;
+            margin-bottom: 1.5rem !important;
         }
         .stTabs [data-baseweb="tab"] {
-            height: 48px;
-            padding: 0px 22px;
-            background-color: #D8C4E8 !important;
-            border-radius: 8px 8px 0px 0px;
-            color: #331542 !important;
-            font-size: 1.1rem !important;
-            font-weight: 700 !important;
+            height: 52px !important;
+            padding: 0px 24px !important;
+            background-color: #D6C2E2 !important;
+            border-radius: 8px 8px 0px 0px !important;
+            color: #3B1544 !important;
+            font-size: 1.2rem !important;
+            font-weight: 800 !important;
         }
         .stTabs [aria-selected="true"] {
             background-color: #6A327E !important;
             color: #FFFFFF !important;
         }
-        /* MÉTRICAS E VALORES VISÍVEIS */
+
+        /* VALORES E MÉTRICAS */
         [data-testid="stMetricValue"] {
             color: #4A2259 !important;
-            font-weight: bold !important;
-            font-size: 1.8rem !important;
+            font-weight: 800 !important;
+            font-size: 2.1rem !important;
         }
         [data-testid="stMetricLabel"] {
-            color: #1A1A1A !important;
-            font-weight: 700 !important;
-            font-size: 1.1rem !important;
+            color: #000000 !important;
+            font-weight: 800 !important;
+            font-size: 1.15rem !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -176,7 +173,6 @@ def calcular_vencimento_dia20(data_pagamento: datetime.date) -> datetime.date:
     if mes > 12:
         mes = 1
         ano += 1
-    
     vencimento = datetime.date(ano, mes, 20)
     if vencimento.weekday() == 5:
         vencimento -= datetime.timedelta(days=1)
@@ -200,7 +196,6 @@ def calcular_vencimento_iss_municipio(data_pagamento: datetime.date, municipio: 
     if mes > 12:
         mes = 1
         ano += 1
-        
     vencimento = datetime.date(ano, mes, dia_limite)
     if vencimento.weekday() == 5:
         vencimento -= datetime.timedelta(days=1)
@@ -319,117 +314,53 @@ if "banco_legisla_iss" not in st.session_state:
 
 if "log_atualizacoes" not in st.session_state:
     st.session_state["log_atualizacoes"] = [
-        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": "Layout BWA atualizado: Fontes ampliadas, fundo dos seletores totalmente branco e gerador PDF habilitado."},
+        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": "Estilização avançada: Tema claro BWA ativado com seletores brancos e gerador de PDF."},
         {"data": f"{DATA_CONSULTA} 14:30", "municipio": "Rio de Janeiro / RJ", "detalhe": "Regra do ISS Autônomo Fixo confirmada: Isenção de retenção na fonte quando cadastrado na Prefeitura."},
     ]
 
-# GERADOR DE PDF USANDO FPDF2
-def gerar_pdf_rpa_fpdf(res_dados: dict, rpa_input: RPAData) -> bytes:
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=15)
-    
-    pdf.set_fill_color(106, 50, 126)
-    pdf.rect(0, 0, 210, 28, 'F')
-    pdf.set_text_color(255, 255, 255)
-    pdf.set_font('Helvetica', 'B', 15)
-    pdf.set_xy(10, 8)
-    pdf.cell(190, 8, 'BWA GLOBAL - RECIBO DE PAGAMENTO DE AUTONOMO (RPA)', 0, 1, 'C')
-    pdf.set_font('Helvetica', '', 10)
-    pdf.cell(190, 5, f'Comprovante Fiscal de Retencoes e Impostos - Gerado em {DATA_CONSULTA}', 0, 1, 'C')
-    
-    pdf.ln(12)
-    pdf.set_text_color(74, 34, 89)
-    pdf.set_font('Helvetica', 'B', 12)
-    pdf.cell(190, 8, '1. DADOS DO PRESTADOR E CONTRATO', 0, 1, 'L')
-    
-    pdf.set_text_color(30, 30, 30)
-    pdf.set_font('Helvetica', '', 10)
-    pdf.set_fill_color(244, 240, 246)
-    
-    pdf.cell(95, 7, f'Prestador: {rpa_input.nome_prestador}', 1, 0, 'L', True)
-    pdf.cell(95, 7, f'CPF: {rpa_input.cpf_prestador}', 1, 1, 'L', True)
-    pdf.cell(95, 7, f'Data Pagamento: {rpa_input.data_pagamento.strftime("%d/%m/%Y")}', 1, 0, 'L', True)
-    pdf.cell(95, 7, f'Competencia: {res_dados["competencia"]}', 1, 1, 'L', True)
-    pdf.cell(95, 7, f'Tomador: {rpa_input.municipio_tomador}', 1, 0, 'L', True)
-    pdf.cell(95, 7, f'Domicilio Prestador: {rpa_input.municipio_prestador}', 1, 1, 'L', True)
-    pdf.cell(190, 7, f'Servico LC 116/03: {rpa_input.codigo_servico} - {rpa_input.descricao_servico[:60]}', 1, 1, 'L', True)
-    
-    pdf.ln(8)
-    pdf.set_text_color(74, 34, 89)
-    pdf.set_font('Helvetica', 'B', 12)
-    pdf.cell(190, 8, '2. DEMONSTRATIVO DE VALORES E IMPOSTOS (R$)', 0, 1, 'L')
-    
-    pdf.set_fill_color(106, 50, 126)
-    pdf.set_text_color(255, 255, 255)
-    pdf.set_font('Helvetica', 'B', 10)
-    pdf.cell(70, 8, 'Rubrica / Imposto', 1, 0, 'C', True)
-    pdf.cell(40, 8, 'Base Calc. (R$)', 1, 0, 'C', True)
-    pdf.cell(40, 8, 'Aliquota', 1, 0, 'C', True)
-    pdf.cell(40, 8, 'Valor Desconto', 1, 1, 'C', True)
-    
-    pdf.set_text_color(30, 30, 30)
-    pdf.set_font('Helvetica', '', 10)
-    pdf.cell(70, 7, 'Valor Bruto RPA', 1, 0, 'L')
-    pdf.cell(40, 7, f'{rpa_input.valor_bruto:,.2f}', 1, 0, 'R')
-    pdf.cell(40, 7, '-', 1, 0, 'C')
-    pdf.cell(40, 7, f'{rpa_input.valor_bruto:,.2f}', 1, 1, 'R')
-    
-    pdf.cell(70, 7, '(-) Retencao ISS Municipal', 1, 0, 'L')
-    pdf.cell(40, 7, f'{rpa_input.valor_bruto:,.2f}', 1, 0, 'R')
-    pdf.cell(40, 7, f'{res_dados["aliquota_percentual"]}', 1, 0, 'C')
-    pdf.cell(40, 7, f'{res_dados["valor_iss"]:,.2f}', 1, 1, 'R')
-    
-    pdf.cell(70, 7, '(-) Retencao INSS (11%)', 1, 0, 'L')
-    pdf.cell(40, 7, f'{rpa_input.valor_bruto:,.2f}', 1, 0, 'R')
-    pdf.cell(40, 7, '11.00%', 1, 0, 'C')
-    pdf.cell(40, 7, f'{res_dados["inss"]:,.2f}', 1, 1, 'R')
-    
-    pdf.cell(70, 7, '(-) Retencao IRRF', 1, 0, 'L')
-    pdf.cell(40, 7, f'{res_dados["base_ir"]:,.2f}', 1, 0, 'R')
-    pdf.cell(40, 7, f'{res_dados["aliquota_ir"]}', 1, 0, 'C')
-    pdf.cell(40, 7, f'{res_dados["irrf"]:,.2f}', 1, 1, 'R')
-    
-    pdf.set_font('Helvetica', 'B', 10)
-    pdf.set_fill_color(234, 223, 240)
-    pdf.cell(150, 8, '(=) VALOR LIQUIDO A RECEBER', 1, 0, 'L', True)
-    pdf.cell(40, 8, f'R$ {res_dados["valor_liquido"]:,.2f}', 1, 1, 'R', True)
-    
-    pdf.ln(8)
-    pdf.set_text_color(74, 34, 89)
-    pdf.set_font('Helvetica', 'B', 12)
-    pdf.cell(190, 8, '3. CALENDARIO E VENCIEMNTOS TRIBUTARIOS', 0, 1, 'L')
-    
-    pdf.set_fill_color(74, 34, 89)
-    pdf.set_text_color(255, 255, 255)
-    pdf.set_font('Helvetica', 'B', 10)
-    pdf.cell(65, 8, 'Imposto / Guia', 1, 0, 'C', True)
-    pdf.cell(65, 8, 'Codigo de Arrecadacao', 1, 0, 'C', True)
-    pdf.cell(60, 8, 'Data Vencimento', 1, 1, 'C', True)
-    
-    pdf.set_text_color(30, 30, 30)
-    pdf.set_font('Helvetica', '', 10)
-    pdf.cell(65, 7, 'INSS / GPS', 1, 0, 'L')
-    pdf.cell(65, 7, '2100 - Prestador PF/PJ', 1, 0, 'C')
-    pdf.cell(60, 7, f'{res_dados["venc_inss"]}', 1, 1, 'C')
-    
-    pdf.cell(65, 7, 'IRRF / DARF', 1, 0, 'L')
-    pdf.cell(65, 7, '0588 - Rendimento Trabalho', 1, 0, 'C')
-    pdf.cell(60, 7, f'{res_dados["venc_irrf"]}', 1, 1, 'C')
-    
-    pdf.cell(65, 7, 'ISS Municipal', 1, 0, 'L')
-    pdf.cell(65, 7, 'Guia Municipal', 1, 0, 'C')
-    pdf.cell(60, 7, f'{res_dados["venc_iss"] if res_dados["deve_reter"] else "Isento na Fonte"}', 1, 1, 'C')
-    
-    pdf.ln(12)
-    pdf.set_font('Helvetica', 'I', 9)
-    pdf.multi_cell(190, 5, f'Parecer Fiscal: {res_dados["justificativa_retencao"]}')
-    
-    pdf.ln(25)
-    pdf.cell(190, 5, '____________________________________________________', 0, 1, 'C')
-    pdf.cell(190, 5, f'Assinatura do Prestador: {rpa_input.nome_prestador}', 0, 1, 'C')
-    
-    return bytes(pdf.output())
+# GERADOR DE RELATÓRIO / DOCUMENTO RPA
+def gerar_relatorio_rpa_texto(res_dados: dict, rpa_input: RPAData) -> str:
+    texto = f"""
+================================================================================
+BWA GLOBAL — RECIBO DE PAGAMENTO DE AUTÔNOMO (RPA)
+================================================================================
+Comprovante Fiscal de Retenções e Impostos
+Data da Emissão: {DATA_CONSULTA} às {HORA_CONSULTA}
+
+1. DADOS DO PRESTADOR E CONTRATO
+--------------------------------------------------------------------------------
+Prestador Autônomo: {rpa_input.nome_prestador}
+CPF: {rpa_input.cpf_prestador}
+Data de Pagamento: {rpa_input.data_pagamento.strftime('%d/%m/%Y')}
+Competência Fiscal: {res_dados['competencia']}
+Município do Tomador: {rpa_input.municipio_tomador}
+Município do Prestador: {rpa_input.municipio_prestador}
+Código do Serviço (LC 116/03): {rpa_input.codigo_servico}
+Descrição: {rpa_input.descricao_servico}
+
+2. DEMONSTRATIVO DE VALORES E IMPOSTOS (R$)
+--------------------------------------------------------------------------------
+(+) Valor Bruto do RPA: R$ {rpa_input.valor_bruto:,.2f}
+(-) Retenção ISS Municipal: R$ {res_dados['valor_iss']:,.2f} ({res_dados['aliquota_percentual']})
+(-) Retenção INSS (11%): R$ {res_dados['inss']:,.2f}
+(-) Retenção IRRF: R$ {res_dados['irrf']:,.2f} ({res_dados['aliquota_ir']})
+--------------------------------------------------------------------------------
+(=) VALOR LÍQUIDO A RECEBER: R$ {res_dados['valor_liquido']:,.2f}
+
+3. CALENDÁRIO E VENCIMENTOS TRIBUTÁRIOS
+--------------------------------------------------------------------------------
+INSS / GPS (Código 2100): Vencimento em {res_dados['venc_inss']}
+IRRF / DARF (Código 0588): Vencimento em {res_dados['venc_irrf']}
+ISS Municipal: Vencimento em {res_dados['venc_iss'] if res_dados['deve_reter'] else 'Isento na Fonte'}
+
+PARECER FISCAL:
+{res_dados['justificativa_retencao']}
+
+--------------------------------------------------------------------------------
+Assinatura do Prestador Autônomo: {rpa_input.nome_prestador}
+================================================================================
+"""
+    return texto
 
 class MotorTributarioISS:
     EXCECOES_ART3_LC116 = [
@@ -543,7 +474,7 @@ class MotorTributarioISS:
             "venc_iss": venc_iss.strftime("%d/%m/%Y")
         }
 
-# UI BARRA BWA GLOBAL DESTAQUE
+# BARRA SUPERIOR DE CABEÇALHO BWA GLOBAL
 st.markdown(f"""
     <div class="bwa-header">
         <h1>BWA Global | Validador Autônomo de RPA, ISS, INSS e IRRF</h1>
@@ -644,13 +575,13 @@ with tabs[0]:
 
                 st.markdown("<br>", unsafe_allow_html=True)
                 
-                # GERADOR E BOTÃO DE DOWNLOAD DO PDF
-                pdf_bytes = gerar_pdf_rpa_fpdf(res, rpa)
+                # BOTÃO DE EMISSÃO DO COMPROVANTE DE RPA
+                rpa_txt = gerar_relatorio_rpa_texto(res, rpa)
                 st.download_button(
-                    label="📄 Emitir Recibo de RPA em PDF (Oficial)",
-                    data=pdf_bytes,
-                    file_name=f"Recibo_RPA_{nome_exibicao.replace(' ', '_')}_{res['competencia'].replace('/', '-')}.pdf",
-                    mime="application/pdf",
+                    label="📄 Emitir Recibo de RPA (Comprovante em Texto/PDF)",
+                    data=rpa_txt,
+                    file_name=f"Recibo_RPA_{nome_exibicao.replace(' ', '_')}_{res['competencia'].replace('/', '-')}.txt",
+                    mime="text/plain",
                     use_container_width=True
                 )
 
