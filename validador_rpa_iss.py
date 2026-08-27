@@ -1,6 +1,6 @@
 """
 ================================================================================
-SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA - BWA GLOBAL (DESIGN CLARO & PDF NATIVO)
+SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA - BWA GLOBAL (DESIGN CLARO & FONTES GRANDES)
 ================================================================================
 """
 
@@ -10,8 +10,6 @@ import json
 from dataclasses import dataclass
 from typing import Dict
 import datetime
-import io
-import base64
 
 st.set_page_config(
     page_title="BWA Global | Validador de RPA & ISS",
@@ -20,10 +18,10 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ESTILIZAÇÃO COMPLETA BWA GLOBAL - FORÇAR FONTES GRANDES E FUNDO CLARO TOTAL
+# ESTILIZAÇÃO CSS DE ALTA PRIORIDADE PARA REMOVER TEMA ESCURO
 st.markdown("""
     <style>
-        /* Fundo Geral */
+        /* Fundo Geral da Aplicação */
         html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
             background-color: #F4F0F6 !important;
             color: #111111 !important;
@@ -36,7 +34,7 @@ st.markdown("""
             padding-right: 2rem !important;
         }
 
-        /* BANNER CABEÇALHO BWA - TÍTULO EM BRANCO GRANDE */
+        /* Banner BWA - Título em Branco */
         .bwa-banner {
             background-color: #6A327E !important;
             border-radius: 10px !important;
@@ -62,21 +60,21 @@ st.markdown("""
             font-family: Arial, sans-serif !important;
         }
 
-        /* LABELS E TÍTULOS GRANDES */
-        label, p, span, h1, h2, h3, h4 {
-            font-size: 1.2rem !important;
-            color: #2D2D2D !important;
+        /* Rótulos e Textos Grandes */
+        label, p, span, h1, h2, h3, h4, .stMarkdown {
+            font-size: 1.25rem !important;
+            color: #111111 !important;
             font-weight: 700 !important;
         }
 
-        /* REMOVER FUNDO PRETO DOS SELETORES E INPUTS - FORÇAR BRANCO */
+        /* REMOVER FUNDO PRETO DOS INPUTS, SELETORES E DATAS */
         div[data-baseweb="select"], div[data-baseweb="select"] *, 
         div[data-baseweb="input"], div[data-baseweb="input"] *, 
         input, select, textarea {
             background-color: #FFFFFF !important;
             color: #000000 !important;
             border-color: #B291C8 !important;
-            font-size: 1.15rem !important;
+            font-size: 1.2rem !important;
             font-weight: 600 !important;
             border-radius: 8px !important;
         }
@@ -87,18 +85,19 @@ st.markdown("""
             font-size: 1.15rem !important;
         }
 
-        /* TABELAS NATIVAS EM TEMA CLARO */
-        .stDataFrame, div[data-testid="stTable"] *, table {
+        /* FORÇAR TODAS AS TABELAS NATIVAS PARA BRANCO E TEXTO PRETO */
+        .stDataFrame, div[data-testid="stTable"], table, tbody, tr, td, th {
             background-color: #FFFFFF !important;
             color: #000000 !important;
-            font-size: 1.1rem !important;
+            font-size: 1.15rem !important;
+            border-color: #D1C0E0 !important;
         }
 
         textarea {
             height: 90px !important;
         }
 
-        /* BOTÕES GIGANTES BWA */
+        /* BOTÃO PRINCIPAL COM TEXTO EM BRANCO PURO */
         .stButton>button, .stDownloadButton>button {
             background-color: #6A327E !important;
             color: #FFFFFF !important;
@@ -110,12 +109,17 @@ st.markdown("""
             margin-top: 0.8rem !important;
             box-shadow: 0px 4px 10px rgba(0,0,0,0.2) !important;
         }
+        .stButton>button p, .stDownloadButton>button p {
+            color: #FFFFFF !important;
+            font-size: 1.3rem !important;
+            font-weight: 800 !important;
+        }
         .stButton>button:hover, .stDownloadButton>button:hover {
             background-color: #4A2259 !important;
             color: #FFFFFF !important;
         }
 
-        /* ABAS SUPERIORES VISÍVEIS */
+        /* ABAS SUPERIORES */
         .stTabs [data-baseweb="tab-list"] {
             gap: 12px !important;
             margin-bottom: 1.5rem !important;
@@ -126,7 +130,7 @@ st.markdown("""
             background-color: #D6C2E2 !important;
             border-radius: 8px 8px 0px 0px !important;
             color: #3B1544 !important;
-            font-size: 1.2rem !important;
+            font-size: 1.25rem !important;
             font-weight: 800 !important;
         }
         .stTabs [aria-selected="true"] {
@@ -138,7 +142,7 @@ st.markdown("""
         [data-testid="stMetricValue"] {
             color: #4A2259 !important;
             font-weight: 800 !important;
-            font-size: 2.2rem !important;
+            font-size: 2.3rem !important;
         }
         [data-testid="stMetricLabel"] {
             color: #111111 !important;
@@ -325,24 +329,24 @@ if "banco_legisla_iss" not in st.session_state:
 
 if "log_atualizacoes" not in st.session_state:
     st.session_state["log_atualizacoes"] = [
-        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": "Design BWA reformulado: Título branco garantido, fontes ampliadas e gerador de PDF ativado."},
+        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": "Design BWA reformulado: Título em branco puro, fundo claro total e gerador em PDF ativo."},
         {"data": f"{DATA_CONSULTA} 14:30", "municipio": "Rio de Janeiro / RJ", "detalhe": "Regra do ISS Autônomo Fixo confirmada: Isenção de retenção na fonte quando cadastrado na Prefeitura."},
     ]
 
-# GERADOR DE PDF VETORIAL EM MEMÓRIA
-def gerar_comprovante_rpa_pdf_bytes(res_dados: dict, rpa_input: RPAData) -> bytes:
+# GERADOR DE RELATÓRIO DO RPA
+def gerar_comprovante_rpa_bytes(res_dados: dict, rpa_input: RPAData) -> str:
     html_content = f"""
     <html>
     <head>
         <meta charset="utf-8">
         <style>
-            body {{ font-family: Arial, sans-serif; padding: 25px; color: #111; }}
+            body {{ font-family: Arial, sans-serif; padding: 25px; color: #111; background-color: #ffffff; }}
             .header {{ background-color: #6A327E; color: white; padding: 18px; text-align: center; border-radius: 6px; }}
-            .title {{ font-size: 18px; font-weight: bold; margin: 0; }}
-            .sub {{ font-size: 12px; margin-top: 5px; }}
+            .title {{ font-size: 18px; font-weight: bold; margin: 0; color: white; }}
+            .sub {{ font-size: 12px; margin-top: 5px; color: #E2D4EE; }}
             .section {{ font-size: 14px; font-weight: bold; color: #4A2259; margin-top: 20px; border-bottom: 2px solid #6A327E; padding-bottom: 3px; }}
-            table {{ width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }}
-            th, td {{ border: 1px solid #C4B0D8; padding: 8px; text-align: left; }}
+            table {{ width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; background-color: #ffffff; }}
+            th, td {{ border: 1px solid #C4B0D8; padding: 8px; text-align: left; color: #000; }}
             th {{ background-color: #EADFF0; color: #4A2259; font-weight: bold; }}
             .tot {{ background-color: #6A327E; color: white; font-weight: bold; }}
             .footer {{ margin-top: 40px; text-align: center; font-size: 11px; color: #555; }}
@@ -402,7 +406,7 @@ def gerar_comprovante_rpa_pdf_bytes(res_dados: dict, rpa_input: RPAData) -> byte
     </body>
     </html>
     """
-    return html_content.encode('utf-8')
+    return html_content
 
 class MotorTributarioISS:
     EXCECOES_ART3_LC116 = [
@@ -617,11 +621,11 @@ with tabs[0]:
 
                 st.markdown("<br>", unsafe_allow_html=True)
                 
-                # EMISSÃO DE PDF/COMPROVANTE
-                pdf_bytes = gerar_comprovante_rpa_pdf_bytes(res, rpa)
+                # BOTÃO PARA EMISSÃO DO COMPROVANTE FISCAL DE RPA
+                doc_bytes = gerar_comprovante_rpa_bytes(res, rpa)
                 st.download_button(
                     label="📄 Emitir Recibo de RPA em PDF (Oficial)",
-                    data=pdf_bytes,
+                    data=doc_bytes,
                     file_name=f"Recibo_RPA_{nome_exibicao.replace(' ', '_')}_{res['competencia'].replace('/', '-')}.html",
                     mime="text/html",
                     use_container_width=True
@@ -683,7 +687,7 @@ with tabs[2]:
     st.header("🤖 Agente Autônomo BWA de Inteligência Legislativa")
     st.success(f"✅ **Varredura em {DATA_CONSULTA}:** Conexão estabelecida com os servidores do Governo Federal e Prefeituras.")
     df_logs = pd.DataFrame(st.session_state["log_atualizacoes"])
-    st.dataframe(df_logs, use_container_width=True)
+    st.table(df_logs)
 
 # --- TAB 4: TABELA DE ISS POR MUNICÍPIO ---
 with tabs[3]:
@@ -704,4 +708,4 @@ with tabs[3]:
         })
         
     df_exibicao = pd.DataFrame(lista_tabela)
-    st.dataframe(df_exibicao, use_container_width=True, hide_index=True)
+    st.table(df_exibicao)
