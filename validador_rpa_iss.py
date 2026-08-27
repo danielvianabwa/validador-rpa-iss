@@ -1,6 +1,6 @@
 """
 ================================================================================
-SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA, ISS, INSS E IRRF (LAYOUT COMPACTO & DD/MM/AAAA)
+SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA, ISS, INSS E IRRF (CAMPOS CADASTRAIS OPCIONAIS)
 ================================================================================
 """
 
@@ -18,7 +18,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# REDUÇÃO DO ESPAÇAMENTO SUPERIOR (CSS CUSTOMIZADO PARA ELIMINAR SCROLL)
+# REDUÇÃO DO ESPAÇAMENTO SUPERIOR
 st.markdown("""
     <style>
         .block-container {
@@ -220,7 +220,7 @@ if "banco_legisla_iss" not in st.session_state:
 
 if "log_atualizacoes" not in st.session_state:
     st.session_state["log_atualizacoes"] = [
-        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": "Interface otimizada: Campos orientativos e formatação de data DD/MM/AAAA configurados."},
+        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": "Atualização: Campos cadastrais (Nome, CPF e Descrição) alterados para Opcionais."},
         {"data": f"{DATA_CONSULTA} 14:30", "municipio": "Rio de Janeiro / RJ", "detalhe": "Regra do ISS Autônomo Fixo confirmada: Isenção de retenção na fonte quando cadastrado na Prefeitura."},
     ]
 
@@ -336,7 +336,7 @@ class MotorTributarioISS:
             "venc_iss": venc_iss.strftime("%d/%m/%Y")
         }
 
-# UI PRINCIPAL (COMPACTA)
+# UI PRINCIPAL
 st.title("⚖️ Validador Autônomo de RPA, ISS, INSS e IRRF")
 st.markdown(f"🟢 **STATUS DO SISTEMA:** {PARAMETROS_INSS['status_conexao']} | Consulta em: **{DATA_CONSULTA} às {HORA_CONSULTA}**")
 
@@ -353,15 +353,17 @@ with tabs[0]:
     
     with col1:
         st.subheader("Dados do Contrato e Prestador")
-        nome = st.text_input("Nome do Prestador", value="", placeholder="Preencher o nome completo do prestador autônomo")
-        cpf = st.text_input("CPF do Prestador", value="", placeholder="Preencher o CPF somente com dígitos (ex: 12345678900)")
-        descricao = st.text_area("Descrição do Serviço Realizado", value="", placeholder="Preencher o serviço realizado detalhadamente (ex: Consultoria Técnica em TI)")
+        st.caption("💡 *Os campos cadastrais são opcionais para simulação rápida. Apenas o valor bruto e os dados fiscais são obrigatórios.*")
+        
+        # CAMPOS COM INDICAÇÃO DE OPCIONAL
+        nome = st.text_input("Nome do Prestador (Opcional)", value="", placeholder="Preencher se desejar identificar o prestador")
+        cpf = st.text_input("CPF do Prestador (Opcional)", value="", placeholder="Preencher se desejar incluir na memória de cálculo")
+        descricao = st.text_area("Descrição do Serviço Realizado (Opcional)", value="", placeholder="Preencher se desejar detalhar o serviço contratado")
         
         c_val, c_dat = st.columns([1, 1])
         with c_val:
             valor_bruto = st.number_input("Valor Bruto do RPA (R$)", min_value=0.0, value=0.0, step=100.0)
         with c_dat:
-            # FORMATO AJUSTADO EXPLICITAMENTE PARA DD/MM/AAAA
             data_pagamento = st.date_input("Data de Pagamento do RPA", value=datetime.date.today(), format="DD/MM/YYYY")
         
     with col2:
@@ -384,15 +386,11 @@ with tabs[0]:
 
     st.markdown("---")
     if st.button("🚀 Executar Validação Tributária Completa", use_container_width=True):
-        cpf_numerico = "".join(filter(str.isdigit, cpf))
+        cpf_numerico = "".join(filter(str.isdigit, cpf)) if cpf else "Não informado"
+        nome_exibicao = nome.strip() if nome.strip() else "Não informado (Simulação)"
         
-        if not nome.strip():
-            st.error("⚠️ **Preenchimento Obrigatório:** Por favor, informe o Nome Completo do prestador.")
-        elif len(cpf_numerico) != 11:
-            st.error("⚠️ **CPF Inválido:** O CPF deve conter exatamente 11 dígitos numéricos.")
-        elif not descricao.strip():
-            st.error("⚠️ **Preenchimento Obrigatório:** Por favor, detalhe a Descrição do Serviço realizado.")
-        elif valor_bruto <= 0:
+        # VALIDAÇÃO EXCLUSIVA DOS CAMPOS OBRIGATÓRIOS (VALOR E ENQUADRAMENTO FISCAL)
+        if valor_bruto <= 0:
             st.error("⚠️ **Valor Inválido:** O Valor Bruto do RPA deve ser maior que R$ 0,00.")
         elif cod_servico_sel == "-- Selecione o Código do Serviço --":
             st.error("⚠️ **Seleção Obrigatória:** Por favor, selecione o Código do Serviço (LC 116/03).")
@@ -406,9 +404,9 @@ with tabs[0]:
                 municipio_execucao = municipio_prestador
 
             rpa = RPAData(
-                nome_prestador=nome,
+                nome_prestador=nome_exibicao,
                 cpf_prestador=cpf_numerico,
-                descricao_servico=descricao,
+                descricao_servico=descricao if descricao.strip() else "Serviço Geral de Prestação Autônoma",
                 valor_bruto=valor_bruto,
                 codigo_servico=cod_servico_clean,
                 municipio_tomador=municipio_tomador,
@@ -453,7 +451,7 @@ with tabs[0]:
                     st.write(f"**Fundamento ISS:** {res['fundamento_legal']}")
                     st.markdown("---")
                     st.json({
-                        "1. Prestador Autônomo": f"{nome} (CPF: {cpf_numerico})",
+                        "1. Prestador Autônomo": f"{nome_exibicao} (CPF: {cpf_numerico})",
                         "2. Data do Pagamento / Fato Gerador": data_pagamento.strftime('%d/%m/%Y'),
                         "3. Competência Fiscal": res['competencia'],
                         "4. Valor Bruto do RPA": f"R$ {valor_bruto:,.2f}",
