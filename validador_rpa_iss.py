@@ -1,6 +1,6 @@
 """
 ================================================================================
-SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA, ISS, INSS E IRRF (CONSULTA OFICIAL AO VIVO)
+SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA, ISS, INSS E IRRF (VENCIMENTOS MUNICIPAIS)
 ================================================================================
 """
 
@@ -24,14 +24,12 @@ DATA_CONSULTA = AGORA.strftime("%d/%m/%Y")
 HORA_CONSULTA = AGORA.strftime("%H:%M:%S")
 ANO_CONSULTA = AGORA.year
 
-# FUNÇÃO DE BUSCA E VALIDAÇÃO EM TEMPO REAL NOS PORTAIS OFICIAIS
 @st.cache_data(ttl=3600)
 def obter_tabela_inss_oficial_2026():
     """Busca e valida as alíquotas do portal oficial MTP/INSS."""
     try:
-        # Teto RGPS 2026 oficial (R$ 8.475,55) conforme Portaria MTP
         base_teto = 8475.55
-        desconto_teto = round(base_teto * 0.11, 2) # R$ 932,31
+        desconto_teto = round(base_teto * 0.11, 2)
         return {
             "fonte": "Portal Oficial Ministério do Trabalho e Previdência / INSS (Live)",
             "status_conexao": "🟢 Conectado ao Portal Oficial do Governo",
@@ -51,6 +49,48 @@ def obter_tabela_inss_oficial_2026():
         }
 
 PARAMETROS_INSS = obter_tabela_inss_oficial_2026()
+
+def calcular_vencimento_dia20(data_pagamento: datetime.date) -> datetime.date:
+    """Calcula o vencimento no dia 20 do mês subsequente (INSS e IRRF), antecipando se for fim de semana."""
+    ano = data_pagamento.year
+    mes = data_pagamento.month + 1
+    if mes > 12:
+        mes = 1
+        ano += 1
+    
+    vencimento = datetime.date(ano, mes, 20)
+    if vencimento.weekday() == 5:
+        vencimento -= datetime.timedelta(days=1)
+    elif vencimento.weekday() == 6:
+        vencimento -= datetime.timedelta(days=2)
+    return vencimento
+
+# MOTOR DINÂMICO DE VENCIMENTO DO ISS POR MUNICÍPIO
+REGRAS_VENCIMENTO_ISS = {
+    "Anápolis / GO": 3,      # Vence dia 3 do mês subsequente
+    "Goiânia / GO": 5,       # Vence dia 5 do mês subsequente
+    "Rio de Janeiro / RJ": 10, # Vence dia 10 do mês subsequente
+    "São Paulo / SP": 10,     # Vence dia 10 do mês subsequente
+    "Belo Horizonte / MG": 8, # Vence dia 8 do mês subsequente
+    "Curitiba / PR": 20,     # Vence dia 20 do mês subsequente
+}
+
+def calcular_vencimento_iss_municipio(data_pagamento: datetime.date, municipio: str) -> datetime.date:
+    """Busca o dia limite de recolhimento do ISS de acordo com o calendário fiscal da prefeitura."""
+    dia_limite = REGRAS_VENCIMENTO_ISS.get(municipio, 10) # Padrão nacional = dia 10
+    
+    ano = data_pagamento.year
+    mes = data_pagamento.month + 1
+    if mes > 12:
+        mes = 1
+        ano += 1
+        
+    vencimento = datetime.date(ano, mes, dia_limite)
+    if vencimento.weekday() == 5:
+        vencimento -= datetime.timedelta(days=1)
+    elif vencimento.weekday() == 6:
+        vencimento -= datetime.timedelta(days=2)
+    return vencimento
 
 LISTA_SERVICOS_LC116_COMPLETA = {
     "01.01 - Análise e desenvolvimento de sistemas": {"aliquota": 0.05, "aceita_rpa": True},
@@ -146,6 +186,7 @@ class RPAData:
     municipio_prestador: str
     municipio_execucao: str
     prestador_possui_ccm: bool
+    data_pagamento: datetime.date
 
 if "banco_legisla_iss" not in st.session_state:
     banco = {
@@ -161,9 +202,8 @@ if "banco_legisla_iss" not in st.session_state:
 
 if "log_atualizacoes" not in st.session_state:
     st.session_state["log_atualizacoes"] = [
-        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": f"Conexão ativa com o portal MTP/INSS: Teto 2026 sincronizado em R$ {PARAMETROS_INSS['base_teto']:,.2f}."},
+        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": "Tabela de Vencimento do ISS parametrizada por município (incluindo vencimentos dias 3, 5, 10 e 20)."},
         {"data": f"{DATA_CONSULTA} 14:30", "municipio": "Rio de Janeiro / RJ", "detalhe": "Regra do ISS Autônomo Fixo confirmada: Isenção de retenção na fonte quando cadastrado na Prefeitura."},
-        {"data": "01/08/2026 08:00", "municipio": "São Paulo / SP", "detalhe": "Bloqueio de RPA mantido para autônomos inscritos no CCM conforme Instrução Normativa."},
     ]
 
 class MotorTributarioISS:
@@ -232,7 +272,6 @@ class MotorTributarioISS:
         aliquota = info_servico_credor.get("aliquota", 0.05)
         valor_iss = round(rpa.valor_bruto * aliquota, 2) if deve_reter else 0.0
 
-        # CÁLCULO INSS DADOS AO VIVO (11% LIMITADO AO TETO OFICIAL 2026 DE R$ 932,31)
         inss = min(round(rpa.valor_bruto * 0.11, 2), PARAMETROS_INSS["desconto_teto"])
 
         base_ir = rpa.valor_bruto - inss
@@ -255,6 +294,11 @@ class MotorTributarioISS:
         irrf = max(0.0, irrf)
         valor_liquido = round(rpa.valor_bruto - (valor_iss if deve_reter else 0.0) - inss - irrf, 2)
 
+        competencia = rpa.data_pagamento.strftime("%m/%Y")
+        venc_inss = calcular_vencimento_dia20(rpa.data_pagamento)
+        venc_irrf = calcular_vencimento_dia20(rpa.data_pagamento)
+        venc_iss = calcular_vencimento_iss_municipio(rpa.data_pagamento, municipio_credor)
+
         return {
             "status": "APROVADO",
             "deve_reter": deve_reter,
@@ -267,7 +311,11 @@ class MotorTributarioISS:
             "base_ir": base_ir,
             "valor_liquido": valor_liquido,
             "fundamento_legal": fundamento,
-            "justificativa_retencao": justificativa
+            "justificativa_retencao": justificativa,
+            "competencia": competencia,
+            "venc_inss": venc_inss.strftime("%d/%m/%Y"),
+            "venc_irrf": venc_irrf.strftime("%d/%m/%Y"),
+            "venc_iss": venc_iss.strftime("%d/%m/%Y")
         }
 
 # UI PRINCIPAL
@@ -288,79 +336,110 @@ with tabs[0]:
     
     with col1:
         st.subheader("Dados do Contrato e Prestador")
-        nome = st.text_input("Nome do Prestador", "João da Silva")
-        cpf = st.text_input("CPF", "123.456.789-00")
-        descricao = st.text_area("Descrição do Serviço", "Serviços Técnicos / Profissionais de Prestação Contratada")
-        valor_bruto = st.number_input("Valor Bruto do RPA (R$)", min_value=100.0, value=5000.0, step=100.0)
+        nome = st.text_input("Nome do Prestador", value="", placeholder="Preencher o nome completo do prestador autônomo")
+        cpf = st.text_input("CPF do Prestador", value="", placeholder="Preencher o CPF somente com dígitos (ex: 12345678900)")
+        descricao = st.text_area("Descrição do Serviço Realizado", value="", placeholder="Preencher o serviço realizado detalhadamente (ex: Consultoria Técnica em TI)")
+        
+        c_val, c_dat = st.columns([1, 1])
+        with c_val:
+            valor_bruto = st.number_input("Valor Bruto do RPA (R$)", min_value=0.0, value=0.0, step=100.0)
+        with c_dat:
+            data_pagamento = st.date_input("Data de Pagamento do RPA", value=datetime.date.today())
         
     with col2:
         st.subheader("Enquadramento Territorial e Fiscal")
         opcoes_servicos = list(LISTA_SERVICOS_LC116_COMPLETA.keys())
-        cod_servico = st.selectbox("Código do Serviço (Tabela 100% Completa LC 116/03)", opcoes_servicos)
+        cod_servico = st.selectbox("Código do Serviço (LC 116/03)", opcoes_servicos)
         cod_servico_clean = cod_servico.split(" - ")[0]
 
         municipio_tomador = st.selectbox("Município do Tomador (Sua Empresa)", MUNICIPIOS_TODOS, index=0)
-        outro_tomador = st.text_input("Ou digite o Município/UF caso não esteja acima:")
+        outro_tomador = st.text_input("Ou digite o Município/UF do tomador caso não esteja na lista:", placeholder="ex: Vinhedo / SP")
         if outro_tomador.strip():
             municipio_tomador = outro_tomador.strip()
 
         municipio_prestador = st.selectbox("Município de Domicílio do Prestador", MUNICIPIOS_TODOS, index=0)
-        outro_prestador = st.text_input("Ou digite o Município/UF do prestador:")
+        outro_prestador = st.text_input("Ou digite o Município/UF do prestador caso não esteja na lista:", placeholder="ex: Niterói / RJ")
         if outro_prestador.strip():
             municipio_prestador = outro_prestador.strip()
 
         municipio_execucao = st.selectbox("Município onde o serviço foi EXECUTADO", MUNICIPIOS_TODOS, index=0)
         possui_ccm = st.checkbox("Prestador possui cadastro (CCM/Inscrição Municipal) ativo na Prefeitura?", value=True)
 
+    st.markdown("---")
     if st.button("🚀 Executar Validação Tributária Completa", use_container_width=True):
-        rpa = RPAData(
-            nome_prestador=nome,
-            cpf_prestador=cpf,
-            descricao_servico=descricao,
-            valor_bruto=valor_bruto,
-            codigo_servico=cod_servico_clean,
-            municipio_tomador=municipio_tomador,
-            municipio_prestador=municipio_prestador,
-            municipio_execucao=municipio_execucao,
-            prestador_possui_ccm=possui_ccm
-        )
+        cpf_numerico = "".join(filter(str.isdigit, cpf))
         
-        motor = MotorTributarioISS(st.session_state["banco_legisla_iss"])
-        res = motor.analisar(rpa)
-
-        st.markdown("---")
-        st.subheader("📋 Parecer Fiscal e Detalhamento de Impostos")
-
-        if res["status"] == "REJEITADO":
-            st.error(f"❌ **EMISSÃO REJEITADA**: {res['motivo_rejeicao']}")
+        if not nome.strip():
+            st.error("⚠️ **Preenchimento Obrigatório:** Por favor, informe o Nome Completo do prestador.")
+        elif len(cpf_numerico) != 11:
+            st.error("⚠️ **CPF Inválido:** O CPF deve conter exatamente 11 dígitos numéricos.")
+        elif not descricao.strip():
+            st.error("⚠️ **Preenchimento Obrigatório:** Por favor, detalhe a Descrição do Serviço realizado.")
+        elif valor_bruto <= 0:
+            st.error("⚠️ **Valor Inválido:** O Valor Bruto do RPA deve ser maior que R$ 0,00.")
         else:
-            if res["deve_reter"]:
-                st.warning(f"⚠️ **STATUS: APROVADO COM RETENÇÃO DE ISS NA FONTE**")
+            rpa = RPAData(
+                nome_prestador=nome,
+                cpf_prestador=cpf_numerico,
+                descricao_servico=descricao,
+                valor_bruto=valor_bruto,
+                codigo_servico=cod_servico_clean,
+                municipio_tomador=municipio_tomador,
+                municipio_prestador=municipio_prestador,
+                municipio_execucao=municipio_execucao,
+                prestador_possui_ccm=possui_ccm,
+                data_pagamento=data_pagamento
+            )
+            
+            motor = MotorTributarioISS(st.session_state["banco_legisla_iss"])
+            res = motor.analisar(rpa)
+
+            st.subheader("📋 Parecer Fiscal e Detalhamento de Impostos")
+
+            if res["status"] == "REJEITADO":
+                st.error(f"❌ **EMISSÃO REJEITADA**: {res['motivo_rejeicao']}")
             else:
-                st.success(f"✅ **STATUS: APROVADO SEM RETENÇÃO DE ISS (DISPENSA DE RETENÇÃO NA FONTE)**")
+                if res["deve_reter"]:
+                    st.warning(f"⚠️ **STATUS: APROVADO COM RETENÇÃO DE ISS NA FONTE**")
+                else:
+                    st.success(f"✅ **STATUS: APROVADO SEM RETENÇÃO DE ISS (DISPENSA DE RETENÇÃO NA FONTE)**")
 
-            c1, c2, c3, c4, c5 = st.columns(5)
-            c1.metric("Valor Bruto", f"R$ {valor_bruto:,.2f}")
-            c2.metric("Retenção ISS", f"R$ {res['valor_iss']:,.2f}", delta=res['aliquota_percentual'])
-            c3.metric("Desconto INSS", f"R$ {res['inss']:,.2f}", delta="11% Autônomo")
-            c4.metric("Desconto IRRF", f"R$ {res['irrf']:,.2f}", delta=f"Faixa: {res['aliquota_ir']}")
-            c5.metric("Valor Líquido a Pagar", f"R$ {res['valor_liquido']:,.2f}")
+                c1, c2, c3, c4, c5 = st.columns(5)
+                c1.metric("Valor Bruto", f"R$ {valor_bruto:,.2f}")
+                c2.metric("Retenção ISS", f"R$ {res['valor_iss']:,.2f}", delta=res['aliquota_percentual'])
+                c3.metric("Desconto INSS", f"R$ {res['inss']:,.2f}", delta="11% Autônomo")
+                c4.metric("Desconto IRRF", f"R$ {res['irrf']:,.2f}", delta=f"Faixa: {res['aliquota_ir']}")
+                c5.metric("Valor Líquido a Pagar", f"R$ {res['valor_liquido']:,.2f}")
 
-            with st.expander("📌 Memória de Cálculo e Fundamentação Legal", expanded=True):
-                st.write(f"**Fonte de Validação Previdenciária:** {PARAMETROS_INSS['fonte']}")
-                st.write(f"**Parecer de ISS:** {res['justificativa_retencao']}")
-                st.write(f"**Município Credor do ISS:** {res['municipio_credor']}")
-                st.write(f"**Fundamento ISS:** {res['fundamento_legal']}")
-                st.markdown("---")
-                st.json({
-                    "1. Valor Bruto do RPA": f"R$ {valor_bruto:,.2f}",
-                    "2. (-) Retenção ISS": f"R$ {res['valor_iss']:,.2f} (Isento na Fonte)",
-                    "3. (-) Retenção INSS (11%)": f"R$ {res['inss']:,.2f} (Teto Max: R$ {PARAMETROS_INSS['desconto_teto']:,.2f})",
-                    "4. (-) Retenção IRRF": f"R$ {res['irrf']:,.2f}",
-                    "5. (=) Valor Líquido a Pagar": f"R$ {res['valor_liquido']:,.2f}"
-                })
+                st.markdown("### 📅 Agenda Tributária de Recolhimento dos Impostos")
+                col_a1, col_a2, col_a3, col_a4 = st.columns(4)
+                col_a1.info(f"**Competência do Fato Gerador:**\n\n# {res['competencia']}")
+                col_a2.metric("Vencimento INSS (GPS - 2100)", res["venc_inss"], help="Vence no dia 20 do mês subsequente")
+                col_a3.metric("Vencimento IRRF (DARF - 0588)", res["venc_irrf"], help="Vence no dia 20 do mês subsequente")
+                col_a4.metric("Vencimento ISS Municipal", res["venc_iss"] if res["deve_reter"] else "Isento na Fonte", help=f"Vencimento parametrizado de acordo com o município de {res['municipio_credor']}")
 
-# --- TAB 2: TABELAS VIGENTES COM VALORES 2026 CONECTADOS AO VIVO ---
+                with st.expander("📌 Memória de Cálculo e Fundamentação Legal", expanded=True):
+                    st.write(f"**Data do Pagamento:** {data_pagamento.strftime('%d/%m/%Y')}")
+                    st.write(f"**Fonte de Validação Previdenciária:** {PARAMETROS_INSS['fonte']}")
+                    st.write(f"**Parecer de ISS:** {res['justificativa_retencao']}")
+                    st.write(f"**Município Credor do ISS:** {res['municipio_credor']}")
+                    st.write(f"**Fundamento ISS:** {res['fundamento_legal']}")
+                    st.markdown("---")
+                    st.json({
+                        "1. Prestador Autônomo": f"{nome} (CPF: {cpf_numerico})",
+                        "2. Data do Pagamento / Fato Gerador": data_pagamento.strftime('%d/%m/%Y'),
+                        "3. Competência Fiscal": res['competencia'],
+                        "4. Valor Bruto do RPA": f"R$ {valor_bruto:,.2f}",
+                        "5. (-) Retenção ISS": f"R$ {res['valor_iss']:,.2f}",
+                        "6. (-) Retenção INSS (11%)": f"R$ {res['inss']:,.2f}",
+                        "7. (-) Retenção IRRF": f"R$ {res['irrf']:,.2f}",
+                        "8. (=) Valor Líquido a Pagar": f"R$ {res['valor_liquido']:,.2f}",
+                        "9. Vencimento Imposto INSS (GPS)": res['venc_inss'],
+                        "10. Vencimento Imposto IRRF (DARF)": res['venc_irrf'],
+                        "11. Vencimento Imposto ISS": res['venc_iss'] if res['deve_reter'] else 'Isento na Fonte'
+                    })
+
+# --- TAB 2: TABELAS VIGENTES ---
 with tabs[1]:
     st.header(f"📊 Tabelas Oficiais Vigentes no Exercício ({ANO_CONSULTA})")
     st.success(f"🔗 **Status da Consulta ao Vivo:** {PARAMETROS_INSS['fonte']} | Dados validados em **{DATA_CONSULTA}**.")
