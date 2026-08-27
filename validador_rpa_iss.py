@@ -1,6 +1,6 @@
 """
 ================================================================================
-SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA - BWA GLOBAL (CAPITAIS + ORDEM ALFABÉTICA)
+SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA - BWA GLOBAL (LISTA ALFABÉTICA UNIFICADA)
 ================================================================================
 """
 
@@ -334,34 +334,24 @@ LISTA_SP_BLOQUEADO_COMPLETA = {
     for cod, dados in LISTA_SERVICOS_LC116_COMPLETA.items()
 }
 
-# DEMAIS MUNICÍPIOS EM ORDEM ALFABÉTICA
-DEMAIS_MUNICIPIOS = sorted([
-    "Anápolis / GO", "Aracaju / SE", "Belém / PA", "Campina Grande / PB",
-    "Campinas / SP", "Campo Grande / MS", "Caxias do Sul / RS", "Contagem / MG",
-    "Cuiabá / MT", "Duque de Caxias / RJ", "Feira de Santana / BA", "Florianópolis / SC",
-    "Goiânia / GO", "Guarulhos / SP", "Joinville / SC", "Juiz de Fora / MG",
-    "Londrina / PR", "Maceió / AL", "Manaus / AM", "Natal / RN", "Niterói / RJ",
-    "Nova Iguaçu / RJ", "Osasco / SP", "Porto Alegre / RS", "Recife / PE",
-    "Ribeirão Preto / SP", "Santo André / SP", "Santos / SP", "São Bernardo do Campo / SP",
-    "São Gonçalo / RJ", "São José dos Campos / SP", "São Luís / MA", "Sorocaba / SP",
-    "Teresina / PI", "Uberlândia / MG", "Vila Velha / ES", "Vitória / ES"
-])
+# CONJUNTO DE MUNICÍPIOS ÚNICOS E VALIDADOS
+CONJUNTO_MUNICIPIS = {
+    "Anápolis / GO", "Aracaju / SE", "Belém / PA", "Belo Horizonte / MG",
+    "Brasília / DF", "Cabedelo / PB", "Campina Grande / PB", "Campinas / SP",
+    "Campo Grande / MS", "Caxias do Sul / RS", "Contagem / MG", "Cuiabá / MT",
+    "Curitiba / PR", "Duque de Caxias / RJ", "Feira de Santana / BA", "Florianópolis / SC",
+    "Fortaleza / CE", "Goiânia / GO", "Guarulhos / SP", "João Pessoa / PB",
+    "Joinville / SC", "Juiz de Fora / MG", "Londrina / PR", "Maceió / AL",
+    "Manaus / AM", "Natal / RN", "Niterói / RJ", "Nova Iguaçu / RJ",
+    "Osasco / SP", "Porto Alegre / RS", "Recife / PE", "Ribeirão Preto / SP",
+    "Rio de Janeiro / RJ", "Salvador / BA", "Santo André / SP", "Santos / SP",
+    "São Bernardo do Campo / SP", "São Gonçalo / RJ", "São José dos Campos / SP",
+    "São Luís / MA", "São Paulo / SP", "Sorocaba / SP", "Teresina / PI",
+    "Uberlândia / MG", "Vila Velha / ES", "Vitória / ES"
+}
 
-# MONTAGEM DA LISTA FINAL: OPÇÃO NULA + CAPITAIS PRINCIPAIS (ORDEM ALFABÉTICA) + DEMAIS MUNICÍPIOS
-MUNICIPIOS_OPCOES = [
-    "-- Selecione o Município / UF --",
-    "Belo Horizonte / MG",
-    "Brasília / DF",
-    "Cabedelo / PB",
-    "Curitiba / PR",
-    "Fortaleza / CE",
-    "João Pessoa / PB",
-    "Natal / RN",
-    "Recife / PE",
-    "Rio de Janeiro / RJ",
-    "Salvador / BA",
-    "São Paulo / SP"
-] + DEMAIS_MUNICIPIOS
+# ORDENAÇÃO ALFABÉTICA RÍGIDA A PARTIR DA PRIMEIRA OPÇÃO NULA
+MUNICIPIOS_OPCOES = ["-- Selecione o Município / UF --"] + sorted(list(CONJUNTO_MUNICIPIS))
 
 @dataclass
 class RPAData:
@@ -391,7 +381,7 @@ if "banco_legisla_iss" not in st.session_state:
 
 if "log_atualizacoes" not in st.session_state:
     st.session_state["log_atualizacoes"] = [
-        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": "Reorganização alfabética da lista de municípios com capitais e polo PB/RN no topo."},
+        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": "Validação de lista: Duplicações removidas e ordenação alfabética estrita aplicada em todos os municípios."},
         {"data": f"{DATA_CONSULTA} 14:30", "municipio": "Rio de Janeiro / RJ", "detalhe": "Regra do ISS Autônomo Fixo confirmada: Isenção de retenção na fonte quando cadastrado na Prefeitura."},
     ]
 
