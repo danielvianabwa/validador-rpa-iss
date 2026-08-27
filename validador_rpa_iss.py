@@ -1,6 +1,6 @@
 """
 ================================================================================
-SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA - BWA GLOBAL (CHECKBOX AMPLIADO)
+SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA - BWA GLOBAL (CAPITAIS + ORDEM ALFABÉTICA)
 ================================================================================
 """
 
@@ -18,7 +18,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ESTILIZAÇÃO CSS DE ALTA PRIORIDADE COM AUMENTO DO CHECKBOX CCM
+# ESTILIZAÇÃO CSS DE ALTA PRIORIDADE
 st.markdown("""
     <style>
         /* Fundo Geral Claro */
@@ -67,10 +67,10 @@ st.markdown("""
             font-weight: 700 !important;
         }
 
-        /* AUMENTO E DESTAQUE ESPECÍFICO DO CHECKBOX CCM */
+        /* CHECKBOX CCM COM MAIOR DESTAQUE */
         div[data-testid="stCheckbox"] {
             margin-top: 15px !important;
-            padding: 10px 14px !important;
+            padding: 12px 16px !important;
             background-color: #FFFFFF !important;
             border: 2px solid #A882C2 !important;
             border-radius: 8px !important;
@@ -107,7 +107,7 @@ st.markdown("""
             font-size: 1.2rem !important;
         }
 
-        /* ESTILO PARA TABELAS HTML PERSONALIZADAS */
+        /* ESTILO PARA TABELAS HTML PERSONALIZADAS SEM FUNDO PRETO */
         .bwa-table {
             width: 100% !important;
             border-collapse: collapse !important;
@@ -142,7 +142,7 @@ st.markdown("""
             height: 110px !important;
         }
 
-        /* BOTÕES GIGANTES BWA */
+        /* BOTÕES GIGANTES BWA COM TEXTO EM BRANCO PURO */
         .stButton>button, .stDownloadButton>button {
             background-color: #6A327E !important;
             color: #FFFFFF !important;
@@ -334,21 +334,34 @@ LISTA_SP_BLOQUEADO_COMPLETA = {
     for cod, dados in LISTA_SERVICOS_LC116_COMPLETA.items()
 }
 
+# DEMAIS MUNICÍPIOS EM ORDEM ALFABÉTICA
+DEMAIS_MUNICIPIOS = sorted([
+    "Anápolis / GO", "Aracaju / SE", "Belém / PA", "Campina Grande / PB",
+    "Campinas / SP", "Campo Grande / MS", "Caxias do Sul / RS", "Contagem / MG",
+    "Cuiabá / MT", "Duque de Caxias / RJ", "Feira de Santana / BA", "Florianópolis / SC",
+    "Goiânia / GO", "Guarulhos / SP", "Joinville / SC", "Juiz de Fora / MG",
+    "Londrina / PR", "Maceió / AL", "Manaus / AM", "Natal / RN", "Niterói / RJ",
+    "Nova Iguaçu / RJ", "Osasco / SP", "Porto Alegre / RS", "Recife / PE",
+    "Ribeirão Preto / SP", "Santo André / SP", "Santos / SP", "São Bernardo do Campo / SP",
+    "São Gonçalo / RJ", "São José dos Campos / SP", "São Luís / MA", "Sorocaba / SP",
+    "Teresina / PI", "Uberlândia / MG", "Vila Velha / ES", "Vitória / ES"
+])
+
+# MONTAGEM DA LISTA FINAL: OPÇÃO NULA + CAPITAIS PRINCIPAIS (ORDEM ALFABÉTICA) + DEMAIS MUNICÍPIOS
 MUNICIPIOS_OPCOES = [
     "-- Selecione o Município / UF --",
-    "Cabedelo / PB", "João Pessoa / PB", "Campina Grande / PB",
-    "Rio de Janeiro / RJ", "São Paulo / SP", "Belo Horizonte / MG", "Brasília / DF",
-    "Salvador / BA", "Fortaleza / CE", "Curitiba / PR", "Manaus / AM",
-    "Recife / PE", "Porto Alegre / RS", "Belém / PA", "Goiânia / GO",
-    "Guarulhos / SP", "Campinas / SP", "Florianópolis / SC", "Santos / SP",
-    "São Luís / MA", "São Gonçalo / RJ", "Maceió / AL", "Duque de Caxias / RJ",
-    "Campo Grande / MS", "Natal / RN", "Teresina / PI", "São Bernardo do Campo / SP",
-    "Nova Iguaçu / RJ", "Santo André / SP", "Osasco / SP",
-    "São José dos Campos / SP", "Ribeirão Preto / SP", "Uberlândia / MG", "Sorocaba / SP",
-    "Contagem / MG", "Aracaju / SE", "Feira de Santana / BA", "Cuiabá / MT",
-    "Joinville / SC", "Juiz de Fora / MG", "Londrina / PR", "Niterói / RJ",
-    "Anápolis / GO", "Vila Velha / ES", "Vitória / ES", "Caxias do Sul / RS"
-]
+    "Belo Horizonte / MG",
+    "Brasília / DF",
+    "Cabedelo / PB",
+    "Curitiba / PR",
+    "Fortaleza / CE",
+    "João Pessoa / PB",
+    "Natal / RN",
+    "Recife / PE",
+    "Rio de Janeiro / RJ",
+    "Salvador / BA",
+    "São Paulo / SP"
+] + DEMAIS_MUNICIPIOS
 
 @dataclass
 class RPAData:
@@ -378,7 +391,7 @@ if "banco_legisla_iss" not in st.session_state:
 
 if "log_atualizacoes" not in st.session_state:
     st.session_state["log_atualizacoes"] = [
-        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": "Ampliação visual: Checkbox CCM com botão destacado e fonte ampliada."},
+        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": "Reorganização alfabética da lista de municípios com capitais e polo PB/RN no topo."},
         {"data": f"{DATA_CONSULTA} 14:30", "municipio": "Rio de Janeiro / RJ", "detalhe": "Regra do ISS Autônomo Fixo confirmada: Isenção de retenção na fonte quando cadastrado na Prefeitura."},
     ]
 
