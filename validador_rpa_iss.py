@@ -1,6 +1,6 @@
 """
 ================================================================================
-SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA - BWA GLOBAL (TODOS MUNICÍPIOS HABILITADOS)
+SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA - BWA GLOBAL (CORREÇÃO DE NameError)
 ================================================================================
 """
 
@@ -10,6 +10,7 @@ import json
 from dataclasses import dataclass
 from typing import Dict
 import datetime
+import urllib.request
 
 st.set_page_config(
     page_title="BWA Global | Validador de RPA & ISS",
@@ -18,7 +19,21 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ESTILIZAÇÃO CSS DE ALTA PRIORIDADE
+# 1. ESTRUTURAS DE DADOS E CLASSES (POSICIONADAS NO INÍCIO)
+@dataclass
+class RPAData:
+    nome_prestador: str
+    cpf_prestador: str
+    descricao_servico: str
+    valor_bruto: float
+    codigo_servico: str
+    municipio_tomador: str
+    municipio_prestador: str
+    municipio_execucao: str
+    prestador_possui_ccm: bool
+    data_pagamento: datetime.date
+
+# 2. ESTILIZAÇÃO CSS DE ALTA PRIORIDADE
 st.markdown("""
     <style>
         /* Fundo Geral Claro */
@@ -107,7 +122,7 @@ st.markdown("""
             font-size: 1.2rem !important;
         }
 
-        /* ESTILO PARA TABELAS HTML PERSONALIZADAS SEM FUNDO PRETO */
+        /* TABELAS HTML PERSONALIZADAS */
         .bwa-table {
             width: 100% !important;
             border-collapse: collapse !important;
@@ -142,7 +157,7 @@ st.markdown("""
             height: 110px !important;
         }
 
-        /* BOTÕES GIGANTES BWA COM TEXTO EM BRANCO PURO */
+        /* BOTÕES GIGANTES BWA */
         .stButton>button, .stDownloadButton>button {
             background-color: #6A327E !important;
             color: #FFFFFF !important;
@@ -227,7 +242,7 @@ def obter_tabela_inss_oficial_2026():
 
 PARAMETROS_INSS = obter_tabela_inss_oficial_2026()
 
-# LISTA AMPLA DE MUNICÍPIOS (TODAS AS CAPITAIS E PRINCIPAIS POLOS BRASILEIROS EM ORDEM ALFABÉTICA)
+# MUNICÍPIOS BASE
 LISTA_MUNICIPIS_COMPLETA = sorted([
     "Anápolis / GO", "Aracaju / SE", "Arapiraca / AL", "Bauru / SP", "Belém / PA",
     "Belo Horizonte / MG", "Blumenau / SC", "Boa Vista / RR", "Brasília / DF",
@@ -247,11 +262,9 @@ LISTA_MUNICIPIS_COMPLETA = sorted([
     "Porto Alegre / RS", "Porto Velho / RO", "Recife / PE", "Ribeirão Preto / SP",
     "Rio Branco / AC", "Rio de Janeiro / RJ", "Rio Grande / RS", "Rondonópolis / MT",
     "Salvador / BA", "Santa Maria / RS", "Santarém / PA", "Santo André / SP",
-    "Santos / SP", "São Bernardo do Campo / SP", "São Gonçalo / RJ", "São José do Rio Preto / SP",
-    "São José dos Campos / SP", "São José / SC", "São Luís / MA", "São Paulo / SP",
-    "Serra / ES", "Sorocaba / SP", "Taubaté / SP", "Teresina / PI",
-    "Uberaba / MG", "Uberlândia / MG", "Vazante / MG", "Vila Velha / ES",
-    "Vitória da Conquista / BA", "Vitória / ES", "Volta Redonda / RJ"
+    "Santos / SP", "São Bernardo do Campo / SP", "São Gonçalo / RJ", "São José dos Campos / SP",
+    "São Luís / MA", "São Paulo / SP", "Sorocaba / SP", "Teresina / PI",
+    "Uberaba / MG", "Uberlândia / MG", "Vila Velha / ES", "Vitória / ES"
 ])
 
 MUNICIPIOS_OPCOES = ["-- Selecione o Município / UF --"] + LISTA_MUNICIPIS_COMPLETA
@@ -363,12 +376,12 @@ LISTA_SP_BLOQUEADO_COMPLETA = {
     for cod, dados in LISTA_SERVICOS_LC116_COMPLETA.items()
 }
 
-# POPOULAÇÃO COMPLETA DO BANCO DE DADOS PARA EXIBIR TODOS OS MUNICÍPIOS NA ABA 4
 if "banco_legisla_iss" not in st.session_state:
     banco = {
         "São Paulo / SP": LISTA_SP_BLOQUEADO_COMPLETA,
         "Florianópolis / SC": LISTA_SP_BLOQUEADO_COMPLETA,
         "Curitiba / PR": LISTA_SP_BLOQUEADO_COMPLETA,
+        "Cabedelo / PB": LISTA_SERVICOS_LC116_COMPLETA,
     }
     for mun in MUNICIPIOS_OPCOES:
         if mun != "-- Selecione o Município / UF --" and mun not in banco:
@@ -378,7 +391,7 @@ if "banco_legisla_iss" not in st.session_state:
 
 if "log_atualizacoes" not in st.session_state:
     st.session_state["log_atualizacoes"] = [
-        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": f"Matriz completa de ISS carregada com {len(MUNICIPIOS_OPCOES)-1} municípios mapeados em ordem alfabética."},
+        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": f"Matriz BWA atualizada: {len(MUNICIPIOS_OPCOES)-1} municípios mapeados e sincronizados."},
         {"data": f"{DATA_CONSULTA} 14:30", "municipio": "Rio de Janeiro / RJ", "detalhe": "Regra do ISS Autônomo Fixo confirmada: Isenção de retenção na fonte quando cadastrado na Prefeitura."},
     ]
 
@@ -755,7 +768,7 @@ with tabs[1]:
 # --- TAB 3: AGENTE DE AUTO-ATUALIZAÇÃO ---
 with tabs[2]:
     st.header("🤖 Agente Autônomo BWA de Inteligência Legislativa")
-    st.success(f"✅ **Varredura em {DATA_CONSULTA}:** Conexão estabelecida com os servidores do Governo Federal e Prefeituras.")
+    st.success(f"✅ **Varredura em {DATA_CONSULTA}:** Conexão established com os servidores do Governo Federal e Prefeituras.")
     
     html_logs = """
     <table class="bwa-table">
