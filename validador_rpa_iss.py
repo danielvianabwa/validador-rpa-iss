@@ -1,6 +1,6 @@
 """
 ================================================================================
-SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA, ISS, INSS E IRRF (TODOS OS MUNICÍPIOS)
+SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA, ISS, INSS E IRRF (TABELA FORMATADA)
 ================================================================================
 """
 
@@ -51,7 +51,6 @@ LISTA_SP_BLOQUEADO = {
     for cod, dados in LISTA_SERVICOS_LC116_COMPLETA.items()
 }
 
-# EXPANSÃO DA LISTA COMPLETA DE MUNICÍPIOS PARA A TABELA DE CONSULTA
 MUNICIPIOS_TODOS = [
     "Rio de Janeiro / RJ", "São Paulo / SP", "Belo Horizonte / MG", "Brasília / DF",
     "Salvador / BA", "Fortaleza / CE", "Curitiba / PR", "Manaus / AM",
@@ -78,14 +77,12 @@ class RPAData:
     municipio_execucao: str
     prestador_possui_ccm: bool
 
-# ALIMENTAÇÃO COMPLETA DE TODOS OS MUNICÍPIOS NO BANCO DE DADOS DA APLICACAO
 if "banco_legisla_iss" not in st.session_state:
     banco = {
         "São Paulo / SP": LISTA_SP_BLOQUEADO,
         "Florianópolis / SC": LISTA_SP_BLOQUEADO,
         "Curitiba / PR": LISTA_SP_BLOQUEADO,
     }
-    # Preenche todos os demais municípios com a tabela padrão LC 116/03
     for mun in MUNICIPIOS_TODOS:
         if mun not in banco:
             banco[mun] = LISTA_SERVICOS_LC116_COMPLETA
@@ -97,7 +94,7 @@ if "historico_analises" not in st.session_state:
 
 if "log_atualizacoes" not in st.session_state:
     st.session_state["log_atualizacoes"] = [
-        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": "Tabela de Municípios expandida com todas as Capitais e Polos do Brasil."},
+        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": "Tabela visual formatada ativada com percentuais legíveis (5,00%) e busca de serviços."},
         {"data": f"{DATA_CONSULTA} 14:30", "municipio": "Rio de Janeiro / RJ", "detalhe": "Regra do ISS Autônomo Fixo confirmada: Isenção na fonte para autônomos cadastrados."},
         {"data": "01/08/2026 08:00", "municipio": "São Paulo / SP", "detalhe": "Bloqueio de RPA mantido para autônomos inscritos no CCM."},
     ]
@@ -295,16 +292,6 @@ with tabs[0]:
                     "5. (=) Valor Líquido a Pagar": f"R$ {res['valor_liquido']:,.2f}"
                 })
 
-            st.session_state["historico_analises"].append({
-                "Data": DATA_CONSULTA,
-                "Prestador": nome,
-                "Valor Bruto": valor_bruto,
-                "ISS Retido": res["valor_iss"],
-                "INSS": res["inss"],
-                "IRRF": res["irrf"],
-                "Valor Líquido": res["valor_liquido"]
-            })
-
 # --- TAB 2: TABELAS VIGENTES (INSS E IRRF) ---
 with tabs[1]:
     st.header(f"📊 Tabelas Oficiais Vigentes no Exercício ({ANO_CONSULTA})")
@@ -336,18 +323,33 @@ with tabs[1]:
 with tabs[2]:
     st.header("🤖 Agente Autônomo de Inteligência Legislativa (RAG)")
     st.markdown("O agente realiza a varredura e o monitoramento em diários oficiais prefeitura a prefeitura.")
-    
     st.success(f"✅ **Varredura realizada em {DATA_CONSULTA}:** Nenhuma alteração de alíquotas ou vetos pendentes.")
     
     st.subheader("📜 Log de Sincronizações e Alterações da Legislação")
     df_logs = pd.DataFrame(st.session_state["log_atualizacoes"])
     st.dataframe(df_logs, use_container_width=True)
 
-# --- TAB 4: TABELA DE ISS POR MUNICÍPIO ---
+# --- TAB 4: TABELA DE ISS POR MUNICÍPIO (NOVO FORMATO VISUAL) ---
 with tabs[3]:
     st.header("⚙️ Tabela Vigente de Alíquotas e Vetos de RPA por Município")
-    st.markdown("Abaixo está a matriz de regras fiscais parametrizadas para os municípios cadastrados no motor:")
+    st.markdown("Abaixo está a matriz de regras fiscais formatada para os municípios cadastrados no motor:")
     
-    # LISTA COMPLETA DE MUNICÍPIOS NO MENU SUSPENSO
     municipio_sel = st.selectbox("Selecione o Município para Visualizar a Tabela Completa:", sorted(list(st.session_state["banco_legisla_iss"].keys())))
-    st.json(st.session_state["banco_legisla_iss"][municipio_sel])
+    dados_mun = st.session_state["banco_legisla_iss"][municipio_sel]
+    
+    # CONVERSÃO DO JSON CRU PARA UMA TABELA FORMATADA
+    lista_tabela = []
+    for cod_desc, info in dados_mun.items():
+        aliquota_perc = f"{info['aliquota'] * 100:.2f}%".replace(".", ",")
+        status_rpa = "✅ Emissão Liberada" if info["aceita_rpa"] else "❌ Proibido (Exige NFS-e)"
+        
+        lista_tabela.append({
+            "Código e Descrição do Serviço (LC 116/03)": cod_desc,
+            "Alíquota ISS": aliquota_perc,
+            "Permite Emissão de RPA?": status_rpa
+        })
+        
+    df_exibicao = pd.DataFrame(lista_tabela)
+    
+    # EXIBIÇÃO DA TABELA FORMATADA
+    st.dataframe(df_exibicao, use_container_width=True, hide_index=True)
