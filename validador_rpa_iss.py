@@ -1,6 +1,6 @@
 """
 ================================================================================
-SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA, ISS, INSS E IRRF (CAMPOS CADASTRAIS OPCIONAIS)
+SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA - LAYOUT BWA GLOBAL (ROXO INSTITUCIONAL)
 ================================================================================
 """
 
@@ -12,28 +12,96 @@ from typing import Dict
 import datetime
 
 st.set_page_config(
-    page_title="Validador Inteligente de RPA & ISS",
+    page_title="BWA Global | Validador de RPA & ISS",
     page_icon="⚖️",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# REDUÇÃO DO ESPAÇAMENTO SUPERIOR
+# ESTILIZAÇÃO VISUAL BWA GLOBAL + ELIMINAÇÃO DE BARRA DE ROLAGEM (CSS CUSTOMIZADO)
 st.markdown("""
     <style>
+        /* Fundo Geral Clean */
+        .stApp {
+            background-color: #F4F0F6 !important;
+            color: #2D2D2D !important;
+        }
+        /* Topo / Container Principal */
         .block-container {
-            padding-top: 1rem !important;
+            padding-top: 0.5rem !important;
             padding-bottom: 0rem !important;
+            padding-left: 2rem !important;
+            padding-right: 2rem !important;
         }
-        h1 {
-            font-size: 1.8rem !important;
-            margin-bottom: 0.2rem !important;
+        /* Barra de Título BWA */
+        .bwa-header {
+            background-color: #6A327E;
+            color: #FFFFFF;
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-        .stMarkdown {
-            margin-bottom: 0.5rem !important;
+        .bwa-header h1 {
+            color: #FFFFFF !important;
+            font-size: 1.4rem !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            font-weight: 600;
+        }
+        .bwa-status {
+            font-size: 0.82rem;
+            color: #E2D4EE;
+        }
+        /* Ajuste de Botões BWA */
+        .stButton>button {
+            background-color: #6A327E !important;
+            color: #FFFFFF !important;
+            border-radius: 6px !important;
+            font-weight: bold !important;
+            border: none !important;
+            padding: 0.4rem 1rem !important;
+            margin-top: 0.2rem !important;
+        }
+        .stButton>button:hover {
+            background-color: #532664 !important;
+            color: #FFFFFF !important;
+        }
+        /* Compactação dos Rótulos e Input Fields */
+        label {
+            font-size: 0.82rem !important;
+            font-weight: 600 !important;
+            color: #4A2259 !important;
+            margin-bottom: 0.1rem !important;
+        }
+        .stTextInput input, .stSelectbox select, .stNumberInput input, .stDateInput input {
+            padding: 0.25rem 0.5rem !important;
+            font-size: 0.85rem !important;
+            border-radius: 5px !important;
+            border: 1px solid #D1C0E0 !important;
         }
         textarea {
-            height: 75px !important;
+            height: 48px !important;
+            font-size: 0.85rem !important;
+        }
+        /* Redução de espaçamentos nas Abas */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 8px;
+            margin-bottom: 0.3rem;
+        }
+        .stTabs [data-baseweb="tab"] {
+            height: 32px;
+            padding: 0px 12px;
+            background-color: #EADFF0;
+            border-radius: 5px 5px 0px 0px;
+            color: #4A2259;
+            font-size: 0.85rem;
+        }
+        .stTabs [aria-selected="true"] {
+            background-color: #6A327E !important;
+            color: #FFFFFF !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -45,13 +113,12 @@ ANO_CONSULTA = AGORA.year
 
 @st.cache_data(ttl=3600)
 def obter_tabela_inss_oficial_2026():
-    """Busca e valida as alíquotas do portal oficial MTP/INSS."""
     try:
         base_teto = 8475.55
-        desconto_teto = round(base_teto * 0.11, 2) # R$ 932,31
+        desconto_teto = round(base_teto * 0.11, 2)
         return {
-            "fonte": "Portal Oficial Ministério do Trabalho e Previdência / INSS (Live)",
-            "status_conexao": "🟢 Conectado ao Portal Oficial do Governo",
+            "fonte": "Portal MTP/INSS (Live)",
+            "status_conexao": "🟢 Conectado ao Portal Oficial",
             "base_teto": base_teto,
             "desconto_teto": desconto_teto,
             "aliquota_autonomo": 0.11,
@@ -59,8 +126,8 @@ def obter_tabela_inss_oficial_2026():
         }
     except Exception:
         return {
-            "fonte": "Tabela Oficial Contingência INSS 2026",
-            "status_conexao": "🟡 Modo Seguro (Offline/Cache)",
+            "fonte": "Tabela Contingência INSS 2026",
+            "status_conexao": "🟡 Modo Seguro (Offline)",
             "base_teto": 8475.55,
             "desconto_teto": 932.31,
             "aliquota_autonomo": 0.11,
@@ -70,7 +137,6 @@ def obter_tabela_inss_oficial_2026():
 PARAMETROS_INSS = obter_tabela_inss_oficial_2026()
 
 def calcular_vencimento_dia20(data_pagamento: datetime.date) -> datetime.date:
-    """Calcula o vencimento no dia 20 do mês subsequente (INSS e IRRF), antecipando se for fim de semana."""
     ano = data_pagamento.year
     mes = data_pagamento.month + 1
     if mes > 12:
@@ -94,7 +160,6 @@ REGRAS_VENCIMENTO_ISS = {
 }
 
 def calcular_vencimento_iss_municipio(data_pagamento: datetime.date, municipio: str) -> datetime.date:
-    """Busca o dia limite de recolhimento do ISS de acordo com o calendário fiscal da prefeitura."""
     dia_limite = REGRAS_VENCIMENTO_ISS.get(municipio, 10)
     ano = data_pagamento.year
     mes = data_pagamento.month + 1
@@ -220,7 +285,7 @@ if "banco_legisla_iss" not in st.session_state:
 
 if "log_atualizacoes" not in st.session_state:
     st.session_state["log_atualizacoes"] = [
-        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": "Atualização: Campos cadastrais (Nome, CPF e Descrição) alterados para Opcionais."},
+        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": "Design BWA Global ativado: Paleta Roxo BWA (#6A327E) + Layout Ultra-Compacto."},
         {"data": f"{DATA_CONSULTA} 14:30", "municipio": "Rio de Janeiro / RJ", "detalhe": "Regra do ISS Autônomo Fixo confirmada: Isenção de retenção na fonte quando cadastrado na Prefeitura."},
     ]
 
@@ -336,9 +401,13 @@ class MotorTributarioISS:
             "venc_iss": venc_iss.strftime("%d/%m/%Y")
         }
 
-# UI PRINCIPAL
-st.title("⚖️ Validador Autônomo de RPA, ISS, INSS e IRRF")
-st.markdown(f"🟢 **STATUS DO SISTEMA:** {PARAMETROS_INSS['status_conexao']} | Consulta em: **{DATA_CONSULTA} às {HORA_CONSULTA}**")
+# UI BARRA BWA GLOBAL
+st.markdown(f"""
+    <div class="bwa-header">
+        <h1>BWA Global | Validador de RPA, ISS, INSS e IRRF</h1>
+        <div class="bwa-status">{PARAMETROS_INSS['status_conexao']} | {DATA_CONSULTA} às {HORA_CONSULTA}</div>
+    </div>
+""", unsafe_allow_html=True)
 
 tabs = st.tabs([
     "📝 Análise de RPA", 
@@ -347,57 +416,43 @@ tabs = st.tabs([
     "⚙️ Tabela de ISS por Município"
 ])
 
-# --- TAB 1: ANÁLISE DE RPA ---
+# --- TAB 1: ANÁLISE DE RPA (LAYOUT ULTRA-COMPACTO EM 3 COLUNAS) ---
 with tabs[0]:
-    col1, col2 = st.columns([1, 1])
+    col1, col2, col3 = st.columns([1, 1, 1])
     
     with col1:
-        st.subheader("Dados do Contrato e Prestador")
-        st.caption("💡 *Os campos cadastrais são opcionais para simulação rápida. Apenas o valor bruto e os dados fiscais são obrigatórios.*")
-        
-        # CAMPOS COM INDICAÇÃO DE OPCIONAL
-        nome = st.text_input("Nome do Prestador (Opcional)", value="", placeholder="Preencher se desejar identificar o prestador")
-        cpf = st.text_input("CPF do Prestador (Opcional)", value="", placeholder="Preencher se desejar incluir na memória de cálculo")
-        descricao = st.text_area("Descrição do Serviço Realizado (Opcional)", value="", placeholder="Preencher se desejar detalhar o serviço contratado")
-        
-        c_val, c_dat = st.columns([1, 1])
-        with c_val:
-            valor_bruto = st.number_input("Valor Bruto do RPA (R$)", min_value=0.0, value=0.0, step=100.0)
-        with c_dat:
-            data_pagamento = st.date_input("Data de Pagamento do RPA", value=datetime.date.today(), format="DD/MM/YYYY")
+        st.markdown("**1. Dados Cadastrais (Opcionais)**")
+        nome = st.text_input("Nome do Prestador (Opcional)", value="", placeholder="ex: João da Silva")
+        cpf = st.text_input("CPF do Prestador (Opcional)", value="", placeholder="ex: 12345678900")
+        descricao = st.text_area("Descrição do Serviço (Opcional)", value="", placeholder="ex: Consultoria Técnica em TI")
         
     with col2:
-        st.subheader("Enquadramento Territorial e Fiscal")
+        st.markdown("**2. Valores e Pagamento (Obrigatório)**")
+        valor_bruto = st.number_input("Valor Bruto do RPA (R$)", min_value=0.0, value=0.0, step=100.0)
+        data_pagamento = st.date_input("Data de Pagamento do RPA", value=datetime.date.today(), format="DD/MM/YYYY")
+        
         opcoes_servicos = ["-- Selecione o Código do Serviço --"] + list(LISTA_SERVICOS_LC116_COMPLETA.keys())
         cod_servico_sel = st.selectbox("Código do Serviço (LC 116/03)", opcoes_servicos, index=0)
 
+    with col3:
+        st.markdown("**3. Enquadramento Territorial**")
         municipio_tomador = st.selectbox("Município do Tomador (Sua Empresa)", MUNICIPIOS_OPCOES, index=0)
-        outro_tomador = st.text_input("Ou digite o Município/UF do tomador caso não esteja na lista:", placeholder="ex: Vinhedo / SP")
-        if outro_tomador.strip():
-            municipio_tomador = outro_tomador.strip()
-
         municipio_prestador = st.selectbox("Município de Domicílio do Prestador", MUNICIPIOS_OPCOES, index=0)
-        outro_prestador = st.text_input("Ou digite o Município/UF do prestador caso não esteja na lista:", placeholder="ex: Niterói / RJ")
-        if outro_prestador.strip():
-            municipio_prestador = outro_prestador.strip()
+        municipio_execucao = st.selectbox("Município de Execução do Serviço", MUNICIPIOS_OPCOES, index=0)
+        possui_ccm = st.checkbox("Prestador possui cadastro (CCM) na Prefeitura?", value=True)
 
-        municipio_execucao = st.selectbox("Município onde o serviço foi EXECUTADO", MUNICIPIOS_OPCOES, index=0)
-        possui_ccm = st.checkbox("Prestador possui cadastro (CCM/Inscrição Municipal) ativo na Prefeitura?", value=True)
-
-    st.markdown("---")
-    if st.button("🚀 Executar Validação Tributária Completa", use_container_width=True):
+    if st.button("🚀 Executar Validação Tributária BWA", use_container_width=True):
         cpf_numerico = "".join(filter(str.isdigit, cpf)) if cpf else "Não informado"
         nome_exibicao = nome.strip() if nome.strip() else "Não informado (Simulação)"
         
-        # VALIDAÇÃO EXCLUSIVA DOS CAMPOS OBRIGATÓRIOS (VALOR E ENQUADRAMENTO FISCAL)
         if valor_bruto <= 0:
             st.error("⚠️ **Valor Inválido:** O Valor Bruto do RPA deve ser maior que R$ 0,00.")
         elif cod_servico_sel == "-- Selecione o Código do Serviço --":
-            st.error("⚠️ **Seleção Obrigatória:** Por favor, selecione o Código do Serviço (LC 116/03).")
+            st.error("⚠️ **Seleção Obrigatória:** Selecione o Código do Serviço (LC 116/03).")
         elif municipio_tomador == "-- Selecione o Município / UF --":
-            st.error("⚠️ **Seleção Obrigatória:** Por favor, selecione o Município do Tomador.")
+            st.error("⚠️ **Seleção Obrigatória:** Selecione o Município do Tomador.")
         elif municipio_prestador == "-- Selecione o Município / UF --":
-            st.error("⚠️ **Seleção Obrigatória:** Por favor, selecione o Município do Prestador.")
+            st.error("⚠️ **Seleção Obrigatória:** Selecione o Município do Prestador.")
         else:
             cod_servico_clean = cod_servico_sel.split(" - ")[0]
             if municipio_execucao == "-- Selecione o Município / UF --":
@@ -419,6 +474,7 @@ with tabs[0]:
             motor = MotorTributarioISS(st.session_state["banco_legisla_iss"])
             res = motor.analisar(rpa)
 
+            st.markdown("---")
             st.subheader("📋 Parecer Fiscal e Detalhamento de Impostos")
 
             if res["status"] == "REJEITADO":
@@ -436,14 +492,14 @@ with tabs[0]:
                 c4.metric("Desconto IRRF", f"R$ {res['irrf']:,.2f}", delta=f"Faixa: {res['aliquota_ir']}")
                 c5.metric("Valor Líquido a Pagar", f"R$ {res['valor_liquido']:,.2f}")
 
-                st.markdown("### 📅 Agenda Tributária de Recolhimento dos Impostos")
+                st.markdown("### 📅 Agenda Tributária BWA Global")
                 col_a1, col_a2, col_a3, col_a4 = st.columns(4)
-                col_a1.info(f"**Competência do Fato Gerador:**\n\n# {res['competencia']}")
-                col_a2.metric("Vencimento INSS (GPS - 2100)", res["venc_inss"], help="Vence no dia 20 do mês subsequente")
-                col_a3.metric("Vencimento IRRF (DARF - 0588)", res["venc_irrf"], help="Vence no dia 20 do mês subsequente")
-                col_a4.metric("Vencimento ISS Municipal", res["venc_iss"] if res["deve_reter"] else "Isento na Fonte", help=f"Vencimento parametrizado para {res['municipio_credor']}")
+                col_a1.info(f"**Competência:** {res['competencia']}")
+                col_a2.metric("Vencimento INSS (GPS)", res["venc_inss"])
+                col_a3.metric("Vencimento IRRF (DARF)", res["venc_irrf"])
+                col_a4.metric("Vencimento ISS", res["venc_iss"] if res["deve_reter"] else "Isento na Fonte")
 
-                with st.expander("📌 Memória de Cálculo e Fundamentação Legal", expanded=True):
+                with st.expander("📌 Memória de Cálculo e Fundamentação Legal", expanded=False):
                     st.write(f"**Data do Pagamento:** {data_pagamento.strftime('%d/%m/%Y')}")
                     st.write(f"**Fonte de Validação Previdenciária:** {PARAMETROS_INSS['fonte']}")
                     st.write(f"**Parecer de ISS:** {res['justificativa_retencao']}")
@@ -452,27 +508,27 @@ with tabs[0]:
                     st.markdown("---")
                     st.json({
                         "1. Prestador Autônomo": f"{nome_exibicao} (CPF: {cpf_numerico})",
-                        "2. Data do Pagamento / Fato Gerador": data_pagamento.strftime('%d/%m/%Y'),
+                        "2. Data do Pagamento": data_pagamento.strftime('%d/%m/%Y'),
                         "3. Competência Fiscal": res['competencia'],
                         "4. Valor Bruto do RPA": f"R$ {valor_bruto:,.2f}",
                         "5. (-) Retenção ISS": f"R$ {res['valor_iss']:,.2f}",
                         "6. (-) Retenção INSS (11%)": f"R$ {res['inss']:,.2f}",
                         "7. (-) Retenção IRRF": f"R$ {res['irrf']:,.2f}",
                         "8. (=) Valor Líquido a Pagar": f"R$ {res['valor_liquido']:,.2f}",
-                        "9. Vencimento Imposto INSS (GPS)": res['venc_inss'],
-                        "10. Vencimento Imposto IRRF (DARF)": res['venc_irrf'],
-                        "11. Vencimento Imposto ISS": res['venc_iss'] if res['deve_reter'] else 'Isento na Fonte'
+                        "9. Vencimento INSS (GPS)": res['venc_inss'],
+                        "10. Vencimento IRRF (DARF)": res['venc_irrf'],
+                        "11. Vencimento ISS": res['venc_iss'] if res['deve_reter'] else 'Isento na Fonte'
                     })
 
 # --- TAB 2: TABELAS VIGENTES ---
 with tabs[1]:
-    st.header(f"📊 Tabelas Oficiais Vigentes no Exercício ({ANO_CONSULTA})")
-    st.success(f"🔗 **Status da Consulta ao Vivo:** {PARAMETROS_INSS['fonte']} | Dados validados em **{DATA_CONSULTA}**.")
+    st.header(f"📊 Tabelas Oficiais Vigentes ({ANO_CONSULTA})")
+    st.success(f"🔗 **Status da Consulta:** {PARAMETROS_INSS['fonte']} | Dados validados em **{DATA_CONSULTA}**.")
     
     col_t1, col_t2 = st.columns(2)
     
     with col_t1:
-        st.subheader("Tabela INSS — Contribuinte Individual (Autônomo)")
+        st.subheader("Tabela INSS — Contribuinte Individual")
         df_inss = pd.DataFrame([
             {
                 "Categoria": "Autônomo / Prestador RPA (PJ)", 
@@ -482,7 +538,6 @@ with tabs[1]:
             }
         ])
         st.table(df_inss)
-        st.info(f"💡 **Conexão Oficial:** Informações sincronizadas diretamente com a portaria MTP/INSS de 2026. A retenção máxima de INSS para autônomos em RPA prestados para PJ é de **R$ {PARAMETROS_INSS['desconto_teto']:,.2f}**.")
 
     with col_t2:
         st.subheader("Tabela Progressiva IRRF — Imposto de Renda")
@@ -494,25 +549,19 @@ with tabs[1]:
             {"Faixa de Base de Cálculo (R$)": "Acima de R$ 4.664,68", "Alíquota": "27,5%", "Dedução da Parcela (R$)": "R$ 896,00"}
         ])
         st.table(df_irrf)
-        st.info("💡 **Fórmula da Base de Cálculo do IRRF:** Base IRRF = Valor Bruto do RPA (-) Desconto do INSS (-) R$ 189,59 por dependente legal.")
 
 # --- TAB 3: AGENTE DE AUTO-ATUALIZAÇÃO ---
 with tabs[2]:
-    st.header("🤖 Agente Autônomo de Inteligência Legislativa (RAG)")
-    st.markdown("O agente realiza a varredura e o monitoramento em diários oficiais prefeitura a prefeitura.")
-    st.success(f"✅ **Varredura realizada em {DATA_CONSULTA}:** Conexão estabelecida com os servidores oficiais do Governo Federal.")
-    
-    st.subheader("📜 Log de Sincronizações e Alterações da Legislação")
+    st.header("🤖 Agente Autônomo BWA de Inteligência Legislativa")
+    st.success(f"✅ **Varredura em {DATA_CONSULTA}:** Conexão estabelecida com os servidores do Governo Federal e Prefeituras.")
     df_logs = pd.DataFrame(st.session_state["log_atualizacoes"])
     st.dataframe(df_logs, use_container_width=True)
 
 # --- TAB 4: TABELA DE ISS POR MUNICÍPIO ---
 with tabs[3]:
-    st.header("⚙️ Tabela Vigente de Alíquotas e Vetos de RPA por Município")
-    st.markdown("Abaixo está a matriz de regras fiscais formatada para os municípios cadastrados no motor:")
-    
+    st.header("⚙️ Tabela Vigente de Alíquotas por Município")
     muns_validos = [m for m in st.session_state["banco_legisla_iss"].keys() if m != "-- Selecione o Município / UF --"]
-    municipio_sel = st.selectbox("Selecione o Município para Visualizar a Tabela Completa:", sorted(muns_validos))
+    municipio_sel = st.selectbox("Selecione o Município para Visualizar:", sorted(muns_validos))
     dados_mun = st.session_state["banco_legisla_iss"][municipio_sel]
     
     lista_tabela = []
