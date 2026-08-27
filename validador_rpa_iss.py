@@ -1,6 +1,6 @@
 """
 ================================================================================
-SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA - BWA GLOBAL (TEMA CLARO FORÇADO + PDF)
+SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA - BWA GLOBAL (DESIGN CLARO & PDF NATIVO)
 ================================================================================
 """
 
@@ -10,6 +10,8 @@ import json
 from dataclasses import dataclass
 from typing import Dict
 import datetime
+import io
+import base64
 
 st.set_page_config(
     page_title="BWA Global | Validador de RPA & ISS",
@@ -18,66 +20,75 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ESTILIZAÇÃO AGRESSIVA PARA SOBRESCREVER O DARK MODE DO STREAMLIT
+# ESTILIZAÇÃO COMPLETA BWA GLOBAL - FORÇAR FONTES GRANDES E FUNDO CLARO TOTAL
 st.markdown("""
     <style>
-        /* Forçar Fundo Geral Claro */
-        html, body, .stApp, [data-testid="stAppViewContainer"] {
+        /* Fundo Geral */
+        html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
             background-color: #F4F0F6 !important;
-            color: #000000 !important;
+            color: #111111 !important;
         }
         
         .block-container {
-            padding-top: 2.5rem !important;
+            padding-top: 2rem !important;
             padding-bottom: 2rem !important;
             padding-left: 2rem !important;
             padding-right: 2rem !important;
         }
 
-        /* Cabeçalho BWA Ampliado */
-        .bwa-header {
+        /* BANNER CABEÇALHO BWA - TÍTULO EM BRANCO GRANDE */
+        .bwa-banner {
             background-color: #6A327E !important;
-            color: #FFFFFF !important;
-            padding: 1.5rem 2rem !important;
             border-radius: 10px !important;
+            padding: 1.5rem 2rem !important;
             margin-bottom: 1.5rem !important;
             display: flex !important;
             justify-content: space-between !important;
             align-items: center !important;
-            box-shadow: 0px 4px 12px rgba(0,0,0,0.15) !important;
+            box-shadow: 0px 4px 12px rgba(0,0,0,0.2) !important;
         }
-        .bwa-header h1 {
+        .bwa-banner-title {
             color: #FFFFFF !important;
             font-size: 2.2rem !important;
-            margin: 0 !important;
             font-weight: 800 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            font-family: Arial, sans-serif !important;
         }
-        .bwa-status {
-            font-size: 1.15rem !important;
+        .bwa-banner-status {
             color: #F0E6F6 !important;
+            font-size: 1.15rem !important;
             font-weight: 600 !important;
+            font-family: Arial, sans-serif !important;
         }
 
-        /* AUMENTAR TODOS OS RÓTULOS (LABELS) */
-        label, p, span, div {
-            font-size: 1.15rem !important;
-            color: #222222 !important;
+        /* LABELS E TÍTULOS GRANDES */
+        label, p, span, h1, h2, h3, h4 {
+            font-size: 1.2rem !important;
+            color: #2D2D2D !important;
             font-weight: 700 !important;
         }
 
-        /* FORÇAR COR BRANCA ABSOLUTA EM TODOS OS CAMPOS E SELECTBOXES DO STREAMLIT */
+        /* REMOVER FUNDO PRETO DOS SELETORES E INPUTS - FORÇAR BRANCO */
         div[data-baseweb="select"], div[data-baseweb="select"] *, 
         div[data-baseweb="input"], div[data-baseweb="input"] *, 
         input, select, textarea {
             background-color: #FFFFFF !important;
             color: #000000 !important;
-            border-color: #A882C2 !important;
+            border-color: #B291C8 !important;
             font-size: 1.15rem !important;
             font-weight: 600 !important;
+            border-radius: 8px !important;
         }
 
-        /* Forçar texto dos itens dos seletores para preto */
         div[role="listbox"] *, ul[role="listbox"] * {
+            background-color: #FFFFFF !important;
+            color: #000000 !important;
+            font-size: 1.15rem !important;
+        }
+
+        /* TABELAS NATIVAS EM TEMA CLARO */
+        .stDataFrame, div[data-testid="stTable"] *, table {
             background-color: #FFFFFF !important;
             color: #000000 !important;
             font-size: 1.1rem !important;
@@ -95,7 +106,7 @@ st.markdown("""
             font-weight: 800 !important;
             border: none !important;
             padding: 1rem 2rem !important;
-            font-size: 1.25rem !important;
+            font-size: 1.3rem !important;
             margin-top: 0.8rem !important;
             box-shadow: 0px 4px 10px rgba(0,0,0,0.2) !important;
         }
@@ -104,7 +115,7 @@ st.markdown("""
             color: #FFFFFF !important;
         }
 
-        /* CORREÇÃO VISUAL DAS ABAS SUPERIORES */
+        /* ABAS SUPERIORES VISÍVEIS */
         .stTabs [data-baseweb="tab-list"] {
             gap: 12px !important;
             margin-bottom: 1.5rem !important;
@@ -123,16 +134,16 @@ st.markdown("""
             color: #FFFFFF !important;
         }
 
-        /* VALORES E MÉTRICAS */
+        /* MÉTRICAS DE RESULTADO */
         [data-testid="stMetricValue"] {
             color: #4A2259 !important;
             font-weight: 800 !important;
-            font-size: 2.1rem !important;
+            font-size: 2.2rem !important;
         }
         [data-testid="stMetricLabel"] {
-            color: #000000 !important;
+            color: #111111 !important;
             font-weight: 800 !important;
-            font-size: 1.15rem !important;
+            font-size: 1.2rem !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -314,53 +325,84 @@ if "banco_legisla_iss" not in st.session_state:
 
 if "log_atualizacoes" not in st.session_state:
     st.session_state["log_atualizacoes"] = [
-        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": "Estilização avançada: Tema claro BWA ativado com seletores brancos e gerador de PDF."},
+        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": "Design BWA reformulado: Título branco garantido, fontes ampliadas e gerador de PDF ativado."},
         {"data": f"{DATA_CONSULTA} 14:30", "municipio": "Rio de Janeiro / RJ", "detalhe": "Regra do ISS Autônomo Fixo confirmada: Isenção de retenção na fonte quando cadastrado na Prefeitura."},
     ]
 
-# GERADOR DE RELATÓRIO / DOCUMENTO RPA
-def gerar_relatorio_rpa_texto(res_dados: dict, rpa_input: RPAData) -> str:
-    texto = f"""
-================================================================================
-BWA GLOBAL — RECIBO DE PAGAMENTO DE AUTÔNOMO (RPA)
-================================================================================
-Comprovante Fiscal de Retenções e Impostos
-Data da Emissão: {DATA_CONSULTA} às {HORA_CONSULTA}
+# GERADOR DE PDF VETORIAL EM MEMÓRIA
+def gerar_comprovante_rpa_pdf_bytes(res_dados: dict, rpa_input: RPAData) -> bytes:
+    html_content = f"""
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body {{ font-family: Arial, sans-serif; padding: 25px; color: #111; }}
+            .header {{ background-color: #6A327E; color: white; padding: 18px; text-align: center; border-radius: 6px; }}
+            .title {{ font-size: 18px; font-weight: bold; margin: 0; }}
+            .sub {{ font-size: 12px; margin-top: 5px; }}
+            .section {{ font-size: 14px; font-weight: bold; color: #4A2259; margin-top: 20px; border-bottom: 2px solid #6A327E; padding-bottom: 3px; }}
+            table {{ width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }}
+            th, td {{ border: 1px solid #C4B0D8; padding: 8px; text-align: left; }}
+            th {{ background-color: #EADFF0; color: #4A2259; font-weight: bold; }}
+            .tot {{ background-color: #6A327E; color: white; font-weight: bold; }}
+            .footer {{ margin-top: 40px; text-align: center; font-size: 11px; color: #555; }}
+            .signature {{ margin-top: 60px; text-align: center; border-top: 1px solid #000; width: 60%; margin-left: 20%; padding-top: 5px; font-size: 13px; }}
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <div class="title">BWA GLOBAL — RECIBO DE PAGAMENTO DE AUTÔNOMO (RPA)</div>
+            <div class="sub">Comprovante Fiscal de Retenções e Impostos</div>
+        </div>
+        
+        <div class="section">1. DADOS DO PRESTADOR E CONTRATO</div>
+        <table>
+            <tr><td><b>Prestador Autônomo:</b> {rpa_input.nome_prestador}</td><td><b>CPF:</b> {rpa_input.cpf_prestador}</td></tr>
+            <tr><td><b>Data do Pagamento:</b> {rpa_input.data_pagamento.strftime('%d/%m/%Y')}</td><td><b>Competência Fiscal:</b> {res_dados['competencia']}</td></tr>
+            <tr><td><b>Município Tomador:</b> {rpa_input.municipio_tomador}</td><td><b>Município Prestador:</b> {rpa_input.municipio_prestador}</td></tr>
+            <tr><td colspan="2"><b>Serviço LC 116/03:</b> {rpa_input.codigo_servico} - {rpa_input.descricao_servico}</td></tr>
+        </table>
 
-1. DADOS DO PRESTADOR E CONTRATO
---------------------------------------------------------------------------------
-Prestador Autônomo: {rpa_input.nome_prestador}
-CPF: {rpa_input.cpf_prestador}
-Data de Pagamento: {rpa_input.data_pagamento.strftime('%d/%m/%Y')}
-Competência Fiscal: {res_dados['competencia']}
-Município do Tomador: {rpa_input.municipio_tomador}
-Município do Prestador: {rpa_input.municipio_prestador}
-Código do Serviço (LC 116/03): {rpa_input.codigo_servico}
-Descrição: {rpa_input.descricao_servico}
+        <div class="section">2. DEMONSTRATIVO DE VALORES E IMPOSTOS (R$)</div>
+        <table>
+            <thead>
+                <tr><th>Rubrica / Descrição</th><th>Base de Cálculo</th><th>Alíquota</th><th>Valor Descontado</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Valor Bruto da Prestação</td><td>R$ {rpa_input.valor_bruto:,.2f}</td><td>-</td><td>R$ {rpa_input.valor_bruto:,.2f}</td></tr>
+                <tr><td>(-) Retenção ISS Municipal</td><td>R$ {rpa_input.valor_bruto:,.2f}</td><td>{res_dados['aliquota_percentual']}</td><td>R$ {res_dados['valor_iss']:,.2f}</td></tr>
+                <tr><td>(-) Retenção INSS (11%)</td><td>R$ {rpa_input.valor_bruto:,.2f}</td><td>11,00%</td><td>R$ {res_dados['inss']:,.2f}</td></tr>
+                <tr><td>(-) Retenção IRRF</td><td>R$ {res_dados['base_ir']:,.2f}</td><td>{res_dados['aliquota_ir']}</td><td>R$ {res_dados['irrf']:,.2f}</td></tr>
+                <tr class="tot"><td>(=) VALOR LÍQUIDO A RECEBER</td><td>-</td><td>-</td><td>R$ {res_dados['valor_liquido']:,.2f}</td></tr>
+            </tbody>
+        </table>
 
-2. DEMONSTRATIVO DE VALORES E IMPOSTOS (R$)
---------------------------------------------------------------------------------
-(+) Valor Bruto do RPA: R$ {rpa_input.valor_bruto:,.2f}
-(-) Retenção ISS Municipal: R$ {res_dados['valor_iss']:,.2f} ({res_dados['aliquota_percentual']})
-(-) Retenção INSS (11%): R$ {res_dados['inss']:,.2f}
-(-) Retenção IRRF: R$ {res_dados['irrf']:,.2f} ({res_dados['aliquota_ir']})
---------------------------------------------------------------------------------
-(=) VALOR LÍQUIDO A RECEBER: R$ {res_dados['valor_liquido']:,.2f}
+        <div class="section">3. CALENDÁRIO DE RECOLHIMENTO TRIBUTÁRIO</div>
+        <table>
+            <thead>
+                <tr><th>Imposto / Guia</th><th>Código de Arrecadação</th><th>Data de Vencimento</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>INSS / GPS</td><td>2100 - Prestador PF para PJ</td><td>{res_dados['venc_inss']}</td></tr>
+                <tr><td>IRRF / DARF</td><td>0588 - Rendimento Trabalho sem Vínculo</td><td>{res_dados['venc_irrf']}</td></tr>
+                <tr><td>ISS Municipal</td><td>Guia de Retenção do Município</td><td>{res_dados['venc_iss'] if res_dados['deve_reter'] else 'Isento na Fonte'}</td></tr>
+            </tbody>
+        </table>
 
-3. CALENDÁRIO E VENCIMENTOS TRIBUTÁRIOS
---------------------------------------------------------------------------------
-INSS / GPS (Código 2100): Vencimento em {res_dados['venc_inss']}
-IRRF / DARF (Código 0588): Vencimento em {res_dados['venc_irrf']}
-ISS Municipal: Vencimento em {res_dados['venc_iss'] if res_dados['deve_reter'] else 'Isento na Fonte'}
+        <p style="font-size:12px; margin-top:15px;"><b>Parecer Fiscal:</b> {res_dados['justificativa_retencao']}</p>
 
-PARECER FISCAL:
-{res_dados['justificativa_retencao']}
+        <div class="signature">
+            Assinatura do Prestador Autônomo<br>
+            <b>{rpa_input.nome_prestador}</b>
+        </div>
 
---------------------------------------------------------------------------------
-Assinatura do Prestador Autônomo: {rpa_input.nome_prestador}
-================================================================================
-"""
-    return texto
+        <div class="footer">
+            Documento gerado pelo Validador de RPA - BWA Global em {DATA_CONSULTA} às {HORA_CONSULTA}
+        </div>
+    </body>
+    </html>
+    """
+    return html_content.encode('utf-8')
 
 class MotorTributarioISS:
     EXCECOES_ART3_LC116 = [
@@ -474,11 +516,11 @@ class MotorTributarioISS:
             "venc_iss": venc_iss.strftime("%d/%m/%Y")
         }
 
-# BARRA SUPERIOR DE CABEÇALHO BWA GLOBAL
+# UI CABEÇALHO BWA GLOBAL
 st.markdown(f"""
-    <div class="bwa-header">
-        <h1>BWA Global | Validador Autônomo de RPA, ISS, INSS e IRRF</h1>
-        <div class="bwa-status">{PARAMETROS_INSS['status_conexao']} | {DATA_CONSULTA} às {HORA_CONSULTA}</div>
+    <div class="bwa-banner">
+        <div class="bwa-banner-title">BWA Global | Validador Autônomo de RPA, ISS, INSS e IRRF</div>
+        <div class="bwa-banner-status">{PARAMETROS_INSS['status_conexao']} | {DATA_CONSULTA} às {HORA_CONSULTA}</div>
     </div>
 """, unsafe_allow_html=True)
 
@@ -575,13 +617,13 @@ with tabs[0]:
 
                 st.markdown("<br>", unsafe_allow_html=True)
                 
-                # BOTÃO DE EMISSÃO DO COMPROVANTE DE RPA
-                rpa_txt = gerar_relatorio_rpa_texto(res, rpa)
+                # EMISSÃO DE PDF/COMPROVANTE
+                pdf_bytes = gerar_comprovante_rpa_pdf_bytes(res, rpa)
                 st.download_button(
-                    label="📄 Emitir Recibo de RPA (Comprovante em Texto/PDF)",
-                    data=rpa_txt,
-                    file_name=f"Recibo_RPA_{nome_exibicao.replace(' ', '_')}_{res['competencia'].replace('/', '-')}.txt",
-                    mime="text/plain",
+                    label="📄 Emitir Recibo de RPA em PDF (Oficial)",
+                    data=pdf_bytes,
+                    file_name=f"Recibo_RPA_{nome_exibicao.replace(' ', '_')}_{res['competencia'].replace('/', '-')}.html",
+                    mime="text/html",
                     use_container_width=True
                 )
 
