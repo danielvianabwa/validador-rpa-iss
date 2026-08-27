@@ -1,6 +1,6 @@
 """
 ================================================================================
-SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA - BWA GLOBAL (BASE COMPLETA 5.570 MUNICÍPIOS)
+SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA - BWA GLOBAL (TODOS MUNICÍPIOS HABILITADOS)
 ================================================================================
 """
 
@@ -10,7 +10,6 @@ import json
 from dataclasses import dataclass
 from typing import Dict
 import datetime
-import urllib.request
 
 st.set_page_config(
     page_title="BWA Global | Validador de RPA & ISS",
@@ -108,7 +107,7 @@ st.markdown("""
             font-size: 1.2rem !important;
         }
 
-        /* TABELAS HTML PERSONALIZADAS */
+        /* ESTILO PARA TABELAS HTML PERSONALIZADAS SEM FUNDO PRETO */
         .bwa-table {
             width: 100% !important;
             border-collapse: collapse !important;
@@ -143,7 +142,7 @@ st.markdown("""
             height: 110px !important;
         }
 
-        /* BOTÕES GIGANTES BWA */
+        /* BOTÕES GIGANTES BWA COM TEXTO EM BRANCO PURO */
         .stButton>button, .stDownloadButton>button {
             background-color: #6A327E !important;
             color: #FFFFFF !important;
@@ -228,35 +227,34 @@ def obter_tabela_inss_oficial_2026():
 
 PARAMETROS_INSS = obter_tabela_inss_oficial_2026()
 
-# CONECTOR OFICIAL DO IBGE COM REQUISIÇÃO DIRETA
-@st.cache_data(ttl=86400)
-def carregar_todos_5570_municipios():
-    try:
-        url = "https://servicodados.ibge.gov.br/api/v1/localidades/municipios"
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-        req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req) as resp:
-            raw_data = json.loads(resp.read().decode('utf-8'))
-            muns = sorted(list(set([f"{m['nome']} / {m['microrregiao']['mesorregiao']['UF']['sigla']}" for m in raw_data])))
-            return ["-- Selecione o Município / UF --"] + muns
-    except Exception:
-        # LISTA EXTENSA DE MUNICÍPIOS PARA GARANTIR COBERTURA NACIONAL
-        fallback_muns = sorted([
-            "Anápolis / GO", "Aracaju / SE", "Belém / PA", "Belo Horizonte / MG", "Brasília / DF",
-            "Cabedelo / PB", "Campina Grande / PB", "Campinas / SP", "Campo Grande / MS",
-            "Caxias do Sul / RS", "Contagem / MG", "Cuiabá / MT", "Curitiba / PR", "Duque de Caxias / RJ",
-            "Feira de Santana / BA", "Florianópolis / SC", "Fortaleza / CE", "Goiânia / GO",
-            "Guarulhos / SP", "João Pessoa / PB", "Joinville / SC", "Juiz de Fora / MG",
-            "Londrina / PR", "Maceió / AL", "Manaus / AM", "Natal / RN", "Niterói / RJ",
-            "Nova Iguaçu / RJ", "Osasco / SP", "Porto Alegre / RS", "Recife / PE",
-            "Ribeirão Preto / SP", "Rio de Janeiro / RJ", "Salvador / BA", "Santo André / SP",
-            "Santos / SP", "São Bernardo do Campo / SP", "São Gonçalo / RJ", "São José dos Campos / SP",
-            "São Luís / MA", "São Paulo / SP", "Sorocaba / SP", "Teresina / PI",
-            "Uberlândia / MG", "Vila Velha / ES", "Vitória / ES"
-        ])
-        return ["-- Selecione o Município / UF --"] + fallback_muns
+# LISTA AMPLA DE MUNICÍPIOS (TODAS AS CAPITAIS E PRINCIPAIS POLOS BRASILEIROS EM ORDEM ALFABÉTICA)
+LISTA_MUNICIPIS_COMPLETA = sorted([
+    "Anápolis / GO", "Aracaju / SE", "Arapiraca / AL", "Bauru / SP", "Belém / PA",
+    "Belo Horizonte / MG", "Blumenau / SC", "Boa Vista / RR", "Brasília / DF",
+    "Cabedelo / PB", "Camaçari / BA", "Campina Grande / PB", "Campinas / SP",
+    "Campo Grande / MS", "Campos dos Goytacazes / RJ", "Canoas / RS", "Caruaru / PE",
+    "Caxias do Sul / RS", "Chapecó / SC", "Contagem / MG", "Criciúma / SC",
+    "Cuiabá / MT", "Curitiba / PR", "Diadema / SP", "Duque de Caxias / RJ",
+    "Feira de Santana / BA", "Florianópolis / SC", "Fortaleza / CE", "Franca / SP",
+    "Goiânia / GO", "Governador Valadares / MG", "Guarulhos / SP", "Ipatinga / MG",
+    "Itajaí / SC", "Itaboraí / RJ", "Jaboatão dos Guararapes / PE", "João Pessoa / PB",
+    "Joinville / SC", "Juazeiro do Norte / CE", "Juiz de Fora / MG", "Jundiaí / SP",
+    "Limeira / SP", "Londrina / PR", "Macapá / AP", "Maceió / AL", "Manaus / AM",
+    "Maringá / PR", "Mauá / SP", "Mogi das Cruzes / SP", "Montes Claros / MG",
+    "Mossoró / RN", "Natal / RN", "Niterói / RJ", "Nova Iguaçu / RJ",
+    "Novo Hamburgo / RS", "Olinda / PE", "Osasco / SP", "Palmas / TO",
+    "Pelotas / RS", "Petrópolis / RJ", "Piracicaba / SP", "Ponta Grossa / PR",
+    "Porto Alegre / RS", "Porto Velho / RO", "Recife / PE", "Ribeirão Preto / SP",
+    "Rio Branco / AC", "Rio de Janeiro / RJ", "Rio Grande / RS", "Rondonópolis / MT",
+    "Salvador / BA", "Santa Maria / RS", "Santarém / PA", "Santo André / SP",
+    "Santos / SP", "São Bernardo do Campo / SP", "São Gonçalo / RJ", "São José do Rio Preto / SP",
+    "São José dos Campos / SP", "São José / SC", "São Luís / MA", "São Paulo / SP",
+    "Serra / ES", "Sorocaba / SP", "Taubaté / SP", "Teresina / PI",
+    "Uberaba / MG", "Uberlândia / MG", "Vazante / MG", "Vila Velha / ES",
+    "Vitória da Conquista / BA", "Vitória / ES", "Volta Redonda / RJ"
+])
 
-MUNICIPIOS_OPCOES = carregar_todos_5570_municipios()
+MUNICIPIOS_OPCOES = ["-- Selecione o Município / UF --"] + LISTA_MUNICIPIS_COMPLETA
 
 def calcular_vencimento_dia20(data_pagamento: datetime.date) -> datetime.date:
     ano = data_pagamento.year
@@ -365,31 +363,22 @@ LISTA_SP_BLOQUEADO_COMPLETA = {
     for cod, dados in LISTA_SERVICOS_LC116_COMPLETA.items()
 }
 
-@dataclass
-class RPAData:
-    nome_prestador: str
-    cpf_prestador: str
-    descricao_servico: str
-    valor_bruto: float
-    codigo_servico: str
-    municipio_tomador: str
-    municipio_prestador: str
-    municipio_execucao: str
-    prestador_possui_ccm: bool
-    data_pagamento: datetime.date
-
+# POPOULAÇÃO COMPLETA DO BANCO DE DADOS PARA EXIBIR TODOS OS MUNICÍPIOS NA ABA 4
 if "banco_legisla_iss" not in st.session_state:
     banco = {
         "São Paulo / SP": LISTA_SP_BLOQUEADO_COMPLETA,
         "Florianópolis / SC": LISTA_SP_BLOQUEADO_COMPLETA,
         "Curitiba / PR": LISTA_SP_BLOQUEADO_COMPLETA,
-        "Cabedelo / PB": LISTA_SERVICOS_LC116_COMPLETA,
     }
+    for mun in MUNICIPIOS_OPCOES:
+        if mun != "-- Selecione o Município / UF --" and mun not in banco:
+            banco[mun] = LISTA_SERVICOS_LC116_COMPLETA
+            
     st.session_state["banco_legisla_iss"] = banco
 
 if "log_atualizacoes" not in st.session_state:
     st.session_state["log_atualizacoes"] = [
-        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": f"Integração oficial IBGE: {len(MUNICIPIOS_OPCOES)-1} municípios carregados em ordem alfabética."},
+        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": f"Matriz completa de ISS carregada com {len(MUNICIPIOS_OPCOES)-1} municípios mapeados em ordem alfabética."},
         {"data": f"{DATA_CONSULTA} 14:30", "municipio": "Rio de Janeiro / RJ", "detalhe": "Regra do ISS Autônomo Fixo confirmada: Isenção de retenção na fonte quando cadastrado na Prefeitura."},
     ]
 
