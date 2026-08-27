@@ -1,6 +1,6 @@
 """
 ================================================================================
-SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA - BWA GLOBAL (TEMA CLARO 100% HTML)
+SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA - BWA GLOBAL (REGRA DE FALLBACK DE ISS)
 ================================================================================
 """
 
@@ -18,7 +18,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ESTILIZAÇÃO CSS DE ALTA PRIORIDADE - REMOÇÃO TOTAL DE TEMA ESCURO E FONTES GRANDES
+# ESTILIZAÇÃO CSS DE ALTA PRIORIDADE
 st.markdown("""
     <style>
         /* Fundo Geral Claro */
@@ -28,13 +28,13 @@ st.markdown("""
         }
         
         .block-container {
-            padding-top: 2.5rem !important;
-            padding-bottom: 2.5rem !important;
-            padding-left: 2.5rem !important;
-            padding-right: 2.5rem !important;
+            padding-top: 2rem !important;
+            padding-bottom: 2rem !important;
+            padding-left: 2rem !important;
+            padding-right: 2rem !important;
         }
 
-        /* Banner BWA - Título em Branco */
+        /* Banner BWA */
         .bwa-banner {
             background-color: #6A327E !important;
             border-radius: 10px !important;
@@ -55,14 +55,14 @@ st.markdown("""
         }
         .bwa-banner-status {
             color: #F0E6F6 !important;
-            font-size: 1.25rem !important;
+            font-size: 1.15rem !important;
             font-weight: 600 !important;
             font-family: Arial, sans-serif !important;
         }
 
         /* TÍTULOS E RÓTULOS GIGANTES */
         label, p, span, h1, h2, h3, h4, .stMarkdown {
-            font-size: 1.35rem !important;
+            font-size: 1.25rem !important;
             color: #111111 !important;
             font-weight: 700 !important;
         }
@@ -84,10 +84,6 @@ st.markdown("""
             background-color: #FFFFFF !important;
             color: #000000 !important;
             font-size: 1.2rem !important;
-        }
-
-        textarea {
-            height: 110px !important;
         }
 
         /* ESTILO PARA TABELAS HTML PERSONALIZADAS SEM FUNDO PRETO */
@@ -119,6 +115,10 @@ st.markdown("""
             border: 1px solid #D1C0E0 !important;
             white-space: normal !important;
             word-wrap: break-word !important;
+        }
+
+        textarea {
+            height: 110px !important;
         }
 
         /* BOTÕES GIGANTES BWA COM TEXTO EM BRANCO PURO */
@@ -220,6 +220,8 @@ def calcular_vencimento_dia20(data_pagamento: datetime.date) -> datetime.date:
     return vencimento
 
 REGRAS_VENCIMENTO_ISS = {
+    "Cabedelo / PB": 10,
+    "João Pessoa / PB": 10,
     "Anápolis / GO": 3,
     "Goiânia / GO": 5,
     "Rio de Janeiro / RJ": 10,
@@ -313,13 +315,15 @@ LISTA_SP_BLOQUEADO_COMPLETA = {
 
 MUNICIPIOS_OPCOES = [
     "-- Selecione o Município / UF --",
+    "➕ Outro Município (Digitar abaixo)",
+    "Cabedelo / PB", "João Pessoa / PB", "Campina Grande / PB",
     "Rio de Janeiro / RJ", "São Paulo / SP", "Belo Horizonte / MG", "Brasília / DF",
     "Salvador / BA", "Fortaleza / CE", "Curitiba / PR", "Manaus / AM",
     "Recife / PE", "Porto Alegre / RS", "Belém / PA", "Goiânia / GO",
     "Guarulhos / SP", "Campinas / SP", "Florianópolis / SC", "Santos / SP",
     "São Luís / MA", "São Gonçalo / RJ", "Maceió / AL", "Duque de Caxias / RJ",
     "Campo Grande / MS", "Natal / RN", "Teresina / PI", "São Bernardo do Campo / SP",
-    "Nova Iguaçu / RJ", "João Pessoa / PB", "Santo André / SP", "Osasco / SP",
+    "Nova Iguaçu / RJ", "Santo André / SP", "Osasco / SP",
     "São José dos Campos / SP", "Ribeirão Preto / SP", "Uberlândia / MG", "Sorocaba / SP",
     "Contagem / MG", "Aracaju / SE", "Feira de Santana / BA", "Cuiabá / MT",
     "Joinville / SC", "Juiz de Fora / MG", "Londrina / PR", "Niterói / RJ",
@@ -344,20 +348,21 @@ if "banco_legisla_iss" not in st.session_state:
         "São Paulo / SP": LISTA_SP_BLOQUEADO_COMPLETA,
         "Florianópolis / SC": LISTA_SP_BLOQUEADO_COMPLETA,
         "Curitiba / PR": LISTA_SP_BLOQUEADO_COMPLETA,
+        "Cabedelo / PB": LISTA_SERVICOS_LC116_COMPLETA,
     }
     for mun in MUNICIPIOS_OPCOES:
-        if mun != "-- Selecione o Município / UF --" and mun not in banco:
+        if mun not in ["-- Selecione o Município / UF --", "➕ Outro Município (Digitar abaixo)"] and mun not in banco:
             banco[mun] = LISTA_SERVICOS_LC116_COMPLETA
             
     st.session_state["banco_legisla_iss"] = banco
 
 if "log_atualizacoes" not in st.session_state:
     st.session_state["log_atualizacoes"] = [
-        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": "Design BWA: Fontes ampliadas, cabeçalho e tabelas em tema claro, e gerador de comprovante ativo."},
+        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": "Módulo de auto-cadastro ativado: Municípios não cadastrados recebem a regra de fallback da LC 116/03 (alíquota padrão 5%)."},
         {"data": f"{DATA_CONSULTA} 14:30", "municipio": "Rio de Janeiro / RJ", "detalhe": "Regra do ISS Autônomo Fixo confirmada: Isenção de retenção na fonte quando cadastrado na Prefeitura."},
     ]
 
-# GERADOR DO COMPROVANTE FISCAL EM HTML COM ROXO BWA E TEXTO BRANCO
+# GERADOR DO COMPROVANTE FISCAL EM HTML
 def gerar_comprovante_rpa_bytes(res_dados: dict, rpa_input: RPAData) -> str:
     html_content = f"""
     <html>
@@ -447,6 +452,12 @@ class MotorTributarioISS:
         mun_prestador = rpa.municipio_prestador
         mun_execucao = rpa.municipio_execucao
         cod_servico = rpa.codigo_servico
+
+        # AUTO-CADASTRO TEMPORÁRIO CASO O MUNICÍPIO SEJA DIGITADO MANUAMENTE
+        if mun_tomador not in self.db:
+            self.db[mun_tomador] = LISTA_SERVICOS_LC116_COMPLETA
+        if mun_prestador not in self.db:
+            self.db[mun_prestador] = LISTA_SERVICOS_LC116_COMPLETA
 
         regras_tomador = self.db.get(mun_tomador, LISTA_SERVICOS_LC116_COMPLETA)
         info_servico_tomador = {"aliquota": 0.05, "aceita_rpa": True}
@@ -572,7 +583,6 @@ with tabs[0]:
         
         valor_bruto = st.number_input("Valor Bruto do RPA (R$)", min_value=0.0, value=0.0, step=100.0)
         
-        # MÁSCARA E INPUT TEXTO DE DATA PARA PREVENIR CAMPO PRETO
         data_str = st.text_input("Data de Pagamento do RPA (DD/MM/AAAA)", value=datetime.date.today().strftime('%d/%m/%Y'))
         try:
             data_pagamento = datetime.datetime.strptime(data_str.strip(), "%d/%m/%Y").date()
@@ -584,9 +594,27 @@ with tabs[0]:
         opcoes_servicos = ["-- Selecione o Código do Serviço --"] + list(LISTA_SERVICOS_LC116_COMPLETA.keys())
         cod_servico_sel = st.selectbox("Código do Serviço (LC 116/03)", opcoes_servicos, index=0)
 
-        municipio_tomador = st.selectbox("Município do Tomador (Sua Empresa)", MUNICIPIOS_OPCOES, index=0)
-        municipio_prestador = st.selectbox("Município de Domicílio do Prestador", MUNICIPIOS_OPCOES, index=0)
-        municipio_execucao = st.selectbox("Município de Execução do Serviço", MUNICIPIOS_OPCOES, index=0)
+        # SELEÇÃO DO TOMADOR COM DIGITAÇÃO LIVRE
+        mun_tomador_sel = st.selectbox("Município do Tomador (Sua Empresa)", MUNICIPIOS_OPCOES, index=0)
+        if mun_tomador_sel == "➕ Outro Município (Digitar abaixo)":
+            municipio_tomador = st.text_input("Digite o Município / UF do Tomador:", placeholder="ex: Cabedelo / PB").strip()
+        else:
+            municipio_tomador = mun_tomador_sel
+
+        # SELEÇÃO DO PRESTADOR COM DIGITAÇÃO LIVRE
+        mun_prestador_sel = st.selectbox("Município de Domicílio do Prestador", MUNICIPIOS_OPCOES, index=0)
+        if mun_prestador_sel == "➕ Outro Município (Digitar abaixo)":
+            municipio_prestador = st.text_input("Digite o Município / UF do Prestador:", placeholder="ex: Cabedelo / PB").strip()
+        else:
+            municipio_prestador = mun_prestador_sel
+
+        # SELEÇÃO DO LOCAL DE EXECUÇÃO
+        mun_exec_sel = st.selectbox("Município de Execução do Serviço", MUNICIPIOS_OPCOES, index=0)
+        if mun_exec_sel == "➕ Outro Município (Digitar abaixo)":
+            municipio_execucao = st.text_input("Digite o Município / UF de Execução:", placeholder="ex: Cabedelo / PB").strip()
+        else:
+            municipio_execucao = mun_exec_sel
+
         possui_ccm = st.checkbox("Prestador possui cadastro (CCM) na Prefeitura?", value=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
@@ -598,13 +626,13 @@ with tabs[0]:
             st.error("⚠️ **Valor Inválido:** O Valor Bruto do RPA deve ser maior que R$ 0,00.")
         elif cod_servico_sel == "-- Selecione o Código do Serviço --":
             st.error("⚠️ **Seleção Obrigatória:** Selecione o Código do Serviço (LC 116/03).")
-        elif municipio_tomador == "-- Selecione o Município / UF --":
-            st.error("⚠️ **Seleção Obrigatória:** Selecione o Município do Tomador.")
-        elif municipio_prestador == "-- Selecione o Município / UF --":
-            st.error("⚠️ **Seleção Obrigatória:** Selecione o Município do Prestador.")
+        elif not municipio_tomador or municipio_tomador == "-- Selecione o Município / UF --":
+            st.error("⚠️ **Seleção Obrigatória:** Selecione ou digite o Município do Tomador.")
+        elif not municipio_prestador or municipio_prestador == "-- Selecione o Município / UF --":
+            st.error("⚠️ **Seleção Obrigatória:** Selecione ou digite o Município do Prestador.")
         else:
             cod_servico_clean = cod_servico_sel.split(" - ")[0]
-            if municipio_execucao == "-- Selecione o Município / UF --":
+            if not municipio_execucao or municipio_execucao == "-- Selecione o Município / UF --":
                 municipio_execucao = municipio_prestador
 
             rpa = RPAData(
@@ -680,7 +708,7 @@ with tabs[0]:
                         "11. Vencimento ISS": res['venc_iss'] if res['deve_reter'] else 'Isento na Fonte'
                     })
 
-# --- TAB 2: TABELAS VIGENTES (HTML CLARO RENDERIZADO) ---
+# --- TAB 2: TABELAS VIGENTES ---
 with tabs[1]:
     st.header(f"📊 Tabelas Oficiais Vigentes ({ANO_CONSULTA})")
     st.success(f"🔗 **Status da Consulta:** {PARAMETROS_INSS['fonte']} | Dados validados em **{DATA_CONSULTA}**.")
@@ -724,7 +752,6 @@ with tabs[2]:
     st.header("🤖 Agente Autônomo BWA de Inteligência Legislativa")
     st.success(f"✅ **Varredura em {DATA_CONSULTA}:** Conexão estabelecida com os servidores do Governo Federal e Prefeituras.")
     
-    # RENDERIZAÇÃO EM TABELA HTML COM CABEÇALHO EM MAIÚSCULAS
     html_logs = """
     <table class="bwa-table">
         <thead>
@@ -741,7 +768,7 @@ with tabs[2]:
 # --- TAB 4: TABELA DE ISS POR MUNICÍPIO ---
 with tabs[3]:
     st.header("⚙️ Tabela Vigente de Alíquotas por Município")
-    muns_validos = [m for m in st.session_state["banco_legisla_iss"].keys() if m != "-- Selecione o Município / UF --"]
+    muns_validos = [m for m in st.session_state["banco_legisla_iss"].keys() if m not in ["-- Selecione o Município / UF --", "➕ Outro Município (Digitar abaixo)"]]
     municipio_sel = st.selectbox("Selecione o Município para Visualizar:", sorted(muns_validos))
     dados_mun = st.session_state["banco_legisla_iss"][municipio_sel]
     
