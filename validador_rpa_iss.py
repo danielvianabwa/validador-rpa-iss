@@ -1,6 +1,6 @@
 """
 ================================================================================
-SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA - BWA GLOBAL (DESIGN CLARO & FONTES GRANDES)
+SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA - BWA GLOBAL (CALENDÁRIO GRANDE + BRANCO)
 ================================================================================
 """
 
@@ -18,10 +18,10 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ESTILIZAÇÃO CSS DE ALTA PRIORIDADE PARA REMOVER TEMA ESCURO
+# ESTILIZAÇÃO CSS DE MÁXIMA PRIORIDADE PARA CALENDÁRIO E TEMA CLARO
 st.markdown("""
     <style>
-        /* Fundo Geral da Aplicação */
+        /* Fundo Geral Claro */
         html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
             background-color: #F4F0F6 !important;
             color: #111111 !important;
@@ -34,7 +34,7 @@ st.markdown("""
             padding-right: 2rem !important;
         }
 
-        /* Banner BWA - Título em Branco */
+        /* Banner BWA */
         .bwa-banner {
             background-color: #6A327E !important;
             border-radius: 10px !important;
@@ -60,7 +60,7 @@ st.markdown("""
             font-family: Arial, sans-serif !important;
         }
 
-        /* Rótulos e Textos Grandes */
+        /* Rótulos Grandes */
         label, p, span, h1, h2, h3, h4, .stMarkdown {
             font-size: 1.25rem !important;
             color: #111111 !important;
@@ -79,13 +79,34 @@ st.markdown("""
             border-radius: 8px !important;
         }
 
+        /* REMOVER FUNDO ESCURO DO POPUP DO CALENDÁRIO E AUMENTAR TAMANHO */
+        div[data-baseweb="popover"], div[data-baseweb="popover"] *,
+        div[data-baseweb="calendar"], div[data-baseweb="calendar"] * {
+            background-color: #FFFFFF !important;
+            color: #000000 !important;
+            font-size: 1.2rem !important;
+            font-weight: bold !important;
+        }
+
+        /* Ajuste específico de dias e cabeçalho do calendário */
+        div[data-baseweb="calendar"] button {
+            background-color: #FFFFFF !important;
+            color: #000000 !important;
+            font-size: 1.15rem !important;
+            border-radius: 6px !important;
+        }
+        div[data-baseweb="calendar"] button:hover {
+            background-color: #EADFF0 !important;
+            color: #4A2259 !important;
+        }
+
         div[role="listbox"] *, ul[role="listbox"] * {
             background-color: #FFFFFF !important;
             color: #000000 !important;
             font-size: 1.15rem !important;
         }
 
-        /* FORÇAR TODAS AS TABELAS NATIVAS PARA BRANCO E TEXTO PRETO */
+        /* TABELAS EM TEMA CLARO */
         .stDataFrame, div[data-testid="stTable"], table, tbody, tr, td, th {
             background-color: #FFFFFF !important;
             color: #000000 !important;
@@ -329,11 +350,10 @@ if "banco_legisla_iss" not in st.session_state:
 
 if "log_atualizacoes" not in st.session_state:
     st.session_state["log_atualizacoes"] = [
-        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": "Design BWA reformulado: Título em branco puro, fundo claro total e gerador em PDF ativo."},
+        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": "Estilização de alto contraste: Calendário ampliado, campos e tabelas em tema claro BWA."},
         {"data": f"{DATA_CONSULTA} 14:30", "municipio": "Rio de Janeiro / RJ", "detalhe": "Regra do ISS Autônomo Fixo confirmada: Isenção de retenção na fonte quando cadastrado na Prefeitura."},
     ]
 
-# GERADOR DE RELATÓRIO DO RPA
 def gerar_comprovante_rpa_bytes(res_dados: dict, rpa_input: RPAData) -> str:
     html_content = f"""
     <html>
@@ -621,7 +641,7 @@ with tabs[0]:
 
                 st.markdown("<br>", unsafe_allow_html=True)
                 
-                # BOTÃO PARA EMISSÃO DO COMPROVANTE FISCAL DE RPA
+                # EMISSÃO DE DOCUMENTO/PDF COMPROVANTE
                 doc_bytes = gerar_comprovante_rpa_bytes(res, rpa)
                 st.download_button(
                     label="📄 Emitir Recibo de RPA em PDF (Oficial)",
