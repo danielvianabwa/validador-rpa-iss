@@ -1,6 +1,6 @@
 """
 ================================================================================
-SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA, ISS, INSS E IRRF (VENCIMENTOS MUNICIPAIS)
+SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA, ISS, INSS E IRRF (LAYOUT COMPACTO & DD/MM/AAAA)
 ================================================================================
 """
 
@@ -10,14 +10,33 @@ import json
 from dataclasses import dataclass
 from typing import Dict
 import datetime
-import urllib.request
 
 st.set_page_config(
     page_title="Validador Inteligente de RPA & ISS",
     page_icon="⚖️",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
+
+# REDUÇÃO DO ESPAÇAMENTO SUPERIOR (CSS CUSTOMIZADO PARA ELIMINAR SCROLL)
+st.markdown("""
+    <style>
+        .block-container {
+            padding-top: 1rem !important;
+            padding-bottom: 0rem !important;
+        }
+        h1 {
+            font-size: 1.8rem !important;
+            margin-bottom: 0.2rem !important;
+        }
+        .stMarkdown {
+            margin-bottom: 0.5rem !important;
+        }
+        textarea {
+            height: 75px !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
 AGORA = datetime.datetime.now()
 DATA_CONSULTA = AGORA.strftime("%d/%m/%Y")
@@ -29,7 +48,7 @@ def obter_tabela_inss_oficial_2026():
     """Busca e valida as alíquotas do portal oficial MTP/INSS."""
     try:
         base_teto = 8475.55
-        desconto_teto = round(base_teto * 0.11, 2)
+        desconto_teto = round(base_teto * 0.11, 2) # R$ 932,31
         return {
             "fonte": "Portal Oficial Ministério do Trabalho e Previdência / INSS (Live)",
             "status_conexao": "🟢 Conectado ao Portal Oficial do Governo",
@@ -65,20 +84,18 @@ def calcular_vencimento_dia20(data_pagamento: datetime.date) -> datetime.date:
         vencimento -= datetime.timedelta(days=2)
     return vencimento
 
-# MOTOR DINÂMICO DE VENCIMENTO DO ISS POR MUNICÍPIO
 REGRAS_VENCIMENTO_ISS = {
-    "Anápolis / GO": 3,      # Vence dia 3 do mês subsequente
-    "Goiânia / GO": 5,       # Vence dia 5 do mês subsequente
-    "Rio de Janeiro / RJ": 10, # Vence dia 10 do mês subsequente
-    "São Paulo / SP": 10,     # Vence dia 10 do mês subsequente
-    "Belo Horizonte / MG": 8, # Vence dia 8 do mês subsequente
-    "Curitiba / PR": 20,     # Vence dia 20 do mês subsequente
+    "Anápolis / GO": 3,
+    "Goiânia / GO": 5,
+    "Rio de Janeiro / RJ": 10,
+    "São Paulo / SP": 10,
+    "Belo Horizonte / MG": 8,
+    "Curitiba / PR": 20,
 }
 
 def calcular_vencimento_iss_municipio(data_pagamento: datetime.date, municipio: str) -> datetime.date:
     """Busca o dia limite de recolhimento do ISS de acordo com o calendário fiscal da prefeitura."""
-    dia_limite = REGRAS_VENCIMENTO_ISS.get(municipio, 10) # Padrão nacional = dia 10
-    
+    dia_limite = REGRAS_VENCIMENTO_ISS.get(municipio, 10)
     ano = data_pagamento.year
     mes = data_pagamento.month + 1
     if mes > 12:
@@ -161,7 +178,8 @@ LISTA_SP_BLOQUEADO_COMPLETA = {
     for cod, dados in LISTA_SERVICOS_LC116_COMPLETA.items()
 }
 
-MUNICIPIOS_TODOS = [
+MUNICIPIOS_OPCOES = [
+    "-- Selecione o Município / UF --",
     "Rio de Janeiro / RJ", "São Paulo / SP", "Belo Horizonte / MG", "Brasília / DF",
     "Salvador / BA", "Fortaleza / CE", "Curitiba / PR", "Manaus / AM",
     "Recife / PE", "Porto Alegre / RS", "Belém / PA", "Goiânia / GO",
@@ -194,15 +212,15 @@ if "banco_legisla_iss" not in st.session_state:
         "Florianópolis / SC": LISTA_SP_BLOQUEADO_COMPLETA,
         "Curitiba / PR": LISTA_SP_BLOQUEADO_COMPLETA,
     }
-    for mun in MUNICIPIOS_TODOS:
-        if mun not in banco:
+    for mun in MUNICIPIOS_OPCOES:
+        if mun != "-- Selecione o Município / UF --" and mun not in banco:
             banco[mun] = LISTA_SERVICOS_LC116_COMPLETA
             
     st.session_state["banco_legisla_iss"] = banco
 
 if "log_atualizacoes" not in st.session_state:
     st.session_state["log_atualizacoes"] = [
-        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": "Tabela de Vencimento do ISS parametrizada por município (incluindo vencimentos dias 3, 5, 10 e 20)."},
+        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": "Interface otimizada: Campos orientativos e formatação de data DD/MM/AAAA configurados."},
         {"data": f"{DATA_CONSULTA} 14:30", "municipio": "Rio de Janeiro / RJ", "detalhe": "Regra do ISS Autônomo Fixo confirmada: Isenção de retenção na fonte quando cadastrado na Prefeitura."},
     ]
 
@@ -318,7 +336,7 @@ class MotorTributarioISS:
             "venc_iss": venc_iss.strftime("%d/%m/%Y")
         }
 
-# UI PRINCIPAL
+# UI PRINCIPAL (COMPACTA)
 st.title("⚖️ Validador Autônomo de RPA, ISS, INSS e IRRF")
 st.markdown(f"🟢 **STATUS DO SISTEMA:** {PARAMETROS_INSS['status_conexao']} | Consulta em: **{DATA_CONSULTA} às {HORA_CONSULTA}**")
 
@@ -331,7 +349,6 @@ tabs = st.tabs([
 
 # --- TAB 1: ANÁLISE DE RPA ---
 with tabs[0]:
-    st.header("Análise Individual de Recibo de Pagamento de Autônomo")
     col1, col2 = st.columns([1, 1])
     
     with col1:
@@ -344,25 +361,25 @@ with tabs[0]:
         with c_val:
             valor_bruto = st.number_input("Valor Bruto do RPA (R$)", min_value=0.0, value=0.0, step=100.0)
         with c_dat:
-            data_pagamento = st.date_input("Data de Pagamento do RPA", value=datetime.date.today())
+            # FORMATO AJUSTADO EXPLICITAMENTE PARA DD/MM/AAAA
+            data_pagamento = st.date_input("Data de Pagamento do RPA", value=datetime.date.today(), format="DD/MM/YYYY")
         
     with col2:
         st.subheader("Enquadramento Territorial e Fiscal")
-        opcoes_servicos = list(LISTA_SERVICOS_LC116_COMPLETA.keys())
-        cod_servico = st.selectbox("Código do Serviço (LC 116/03)", opcoes_servicos)
-        cod_servico_clean = cod_servico.split(" - ")[0]
+        opcoes_servicos = ["-- Selecione o Código do Serviço --"] + list(LISTA_SERVICOS_LC116_COMPLETA.keys())
+        cod_servico_sel = st.selectbox("Código do Serviço (LC 116/03)", opcoes_servicos, index=0)
 
-        municipio_tomador = st.selectbox("Município do Tomador (Sua Empresa)", MUNICIPIOS_TODOS, index=0)
+        municipio_tomador = st.selectbox("Município do Tomador (Sua Empresa)", MUNICIPIOS_OPCOES, index=0)
         outro_tomador = st.text_input("Ou digite o Município/UF do tomador caso não esteja na lista:", placeholder="ex: Vinhedo / SP")
         if outro_tomador.strip():
             municipio_tomador = outro_tomador.strip()
 
-        municipio_prestador = st.selectbox("Município de Domicílio do Prestador", MUNICIPIOS_TODOS, index=0)
+        municipio_prestador = st.selectbox("Município de Domicílio do Prestador", MUNICIPIOS_OPCOES, index=0)
         outro_prestador = st.text_input("Ou digite o Município/UF do prestador caso não esteja na lista:", placeholder="ex: Niterói / RJ")
         if outro_prestador.strip():
             municipio_prestador = outro_prestador.strip()
 
-        municipio_execucao = st.selectbox("Município onde o serviço foi EXECUTADO", MUNICIPIOS_TODOS, index=0)
+        municipio_execucao = st.selectbox("Município onde o serviço foi EXECUTADO", MUNICIPIOS_OPCOES, index=0)
         possui_ccm = st.checkbox("Prestador possui cadastro (CCM/Inscrição Municipal) ativo na Prefeitura?", value=True)
 
     st.markdown("---")
@@ -377,7 +394,17 @@ with tabs[0]:
             st.error("⚠️ **Preenchimento Obrigatório:** Por favor, detalhe a Descrição do Serviço realizado.")
         elif valor_bruto <= 0:
             st.error("⚠️ **Valor Inválido:** O Valor Bruto do RPA deve ser maior que R$ 0,00.")
+        elif cod_servico_sel == "-- Selecione o Código do Serviço --":
+            st.error("⚠️ **Seleção Obrigatória:** Por favor, selecione o Código do Serviço (LC 116/03).")
+        elif municipio_tomador == "-- Selecione o Município / UF --":
+            st.error("⚠️ **Seleção Obrigatória:** Por favor, selecione o Município do Tomador.")
+        elif municipio_prestador == "-- Selecione o Município / UF --":
+            st.error("⚠️ **Seleção Obrigatória:** Por favor, selecione o Município do Prestador.")
         else:
+            cod_servico_clean = cod_servico_sel.split(" - ")[0]
+            if municipio_execucao == "-- Selecione o Município / UF --":
+                municipio_execucao = municipio_prestador
+
             rpa = RPAData(
                 nome_prestador=nome,
                 cpf_prestador=cpf_numerico,
@@ -416,7 +443,7 @@ with tabs[0]:
                 col_a1.info(f"**Competência do Fato Gerador:**\n\n# {res['competencia']}")
                 col_a2.metric("Vencimento INSS (GPS - 2100)", res["venc_inss"], help="Vence no dia 20 do mês subsequente")
                 col_a3.metric("Vencimento IRRF (DARF - 0588)", res["venc_irrf"], help="Vence no dia 20 do mês subsequente")
-                col_a4.metric("Vencimento ISS Municipal", res["venc_iss"] if res["deve_reter"] else "Isento na Fonte", help=f"Vencimento parametrizado de acordo com o município de {res['municipio_credor']}")
+                col_a4.metric("Vencimento ISS Municipal", res["venc_iss"] if res["deve_reter"] else "Isento na Fonte", help=f"Vencimento parametrizado para {res['municipio_credor']}")
 
                 with st.expander("📌 Memória de Cálculo e Fundamentação Legal", expanded=True):
                     st.write(f"**Data do Pagamento:** {data_pagamento.strftime('%d/%m/%Y')}")
@@ -486,7 +513,8 @@ with tabs[3]:
     st.header("⚙️ Tabela Vigente de Alíquotas e Vetos de RPA por Município")
     st.markdown("Abaixo está a matriz de regras fiscais formatada para os municípios cadastrados no motor:")
     
-    municipio_sel = st.selectbox("Selecione o Município para Visualizar a Tabela Completa:", sorted(list(st.session_state["banco_legisla_iss"].keys())))
+    muns_validos = [m for m in st.session_state["banco_legisla_iss"].keys() if m != "-- Selecione o Município / UF --"]
+    municipio_sel = st.selectbox("Selecione o Município para Visualizar a Tabela Completa:", sorted(muns_validos))
     dados_mun = st.session_state["banco_legisla_iss"][municipio_sel]
     
     lista_tabela = []
