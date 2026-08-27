@@ -1,6 +1,6 @@
 """
 ================================================================================
-SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA - BWA GLOBAL (CALENDÁRIO GRANDE + BRANCO)
+SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA - BWA GLOBAL (LAYOUT AMPLIADO & CORES CORRIGIDAS)
 ================================================================================
 """
 
@@ -18,7 +18,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ESTILIZAÇÃO CSS DE MÁXIMA PRIORIDADE PARA CALENDÁRIO E TEMA CLARO
+# ESTILIZAÇÃO CSS AVANÇADA - FONTES GRANDES + CONTRASTE ROXO/BRANCO GARANTIDO
 st.markdown("""
     <style>
         /* Fundo Geral Claro */
@@ -28,18 +28,18 @@ st.markdown("""
         }
         
         .block-container {
-            padding-top: 2rem !important;
-            padding-bottom: 2rem !important;
-            padding-left: 2rem !important;
-            padding-right: 2rem !important;
+            padding-top: 3rem !important;
+            padding-bottom: 3rem !important;
+            padding-left: 3rem !important;
+            padding-right: 3rem !important;
         }
 
-        /* Banner BWA */
+        /* Banner BWA - Título em Branco */
         .bwa-banner {
             background-color: #6A327E !important;
             border-radius: 10px !important;
-            padding: 1.5rem 2rem !important;
-            margin-bottom: 1.5rem !important;
+            padding: 1.8rem 2.2rem !important;
+            margin-bottom: 2rem !important;
             display: flex !important;
             justify-content: space-between !important;
             align-items: center !important;
@@ -47,7 +47,7 @@ st.markdown("""
         }
         .bwa-banner-title {
             color: #FFFFFF !important;
-            font-size: 2.2rem !important;
+            font-size: 2.4rem !important;
             font-weight: 800 !important;
             margin: 0 !important;
             padding: 0 !important;
@@ -55,44 +55,44 @@ st.markdown("""
         }
         .bwa-banner-status {
             color: #F0E6F6 !important;
-            font-size: 1.15rem !important;
+            font-size: 1.25rem !important;
             font-weight: 600 !important;
             font-family: Arial, sans-serif !important;
         }
 
-        /* Rótulos Grandes */
+        /* TÍTULOS E RÓTULOS GIGANTES */
         label, p, span, h1, h2, h3, h4, .stMarkdown {
-            font-size: 1.25rem !important;
+            font-size: 1.35rem !important;
             color: #111111 !important;
             font-weight: 700 !important;
         }
 
-        /* REMOVER FUNDO PRETO DOS INPUTS, SELETORES E DATAS */
+        /* FORÇAR CAMPOS DE TEXTO, SELETORES E DATAS COM FUNDO BRANCO E TEXTO ESCURO */
         div[data-baseweb="select"], div[data-baseweb="select"] *, 
         div[data-baseweb="input"], div[data-baseweb="input"] *, 
+        div[data-baseweb="base-input"], div[data-baseweb="base-input"] *,
         input, select, textarea {
             background-color: #FFFFFF !important;
             color: #000000 !important;
-            border-color: #B291C8 !important;
-            font-size: 1.2rem !important;
+            border-color: #A882C2 !important;
+            font-size: 1.3rem !important;
             font-weight: 600 !important;
             border-radius: 8px !important;
         }
 
-        /* REMOVER FUNDO ESCURO DO POPUP DO CALENDÁRIO E AUMENTAR TAMANHO */
+        /* REMOVER CAIXA ESCURA DO CALENDÁRIO POPUP */
         div[data-baseweb="popover"], div[data-baseweb="popover"] *,
         div[data-baseweb="calendar"], div[data-baseweb="calendar"] * {
             background-color: #FFFFFF !important;
             color: #000000 !important;
-            font-size: 1.2rem !important;
+            font-size: 1.25rem !important;
             font-weight: bold !important;
         }
 
-        /* Ajuste específico de dias e cabeçalho do calendário */
         div[data-baseweb="calendar"] button {
             background-color: #FFFFFF !important;
             color: #000000 !important;
-            font-size: 1.15rem !important;
+            font-size: 1.2rem !important;
             border-radius: 6px !important;
         }
         div[data-baseweb="calendar"] button:hover {
@@ -103,36 +103,36 @@ st.markdown("""
         div[role="listbox"] *, ul[role="listbox"] * {
             background-color: #FFFFFF !important;
             color: #000000 !important;
-            font-size: 1.15rem !important;
+            font-size: 1.2rem !important;
         }
 
-        /* TABELAS EM TEMA CLARO */
+        /* TABELAS NATIVAS EM TEMA CLARO */
         .stDataFrame, div[data-testid="stTable"], table, tbody, tr, td, th {
             background-color: #FFFFFF !important;
             color: #000000 !important;
-            font-size: 1.15rem !important;
+            font-size: 1.2rem !important;
             border-color: #D1C0E0 !important;
         }
 
         textarea {
-            height: 90px !important;
+            height: 110px !important;
         }
 
-        /* BOTÃO PRINCIPAL COM TEXTO EM BRANCO PURO */
+        /* BOTÕES GIGANTES BWA COM TEXTO EM BRANCO PURO */
         .stButton>button, .stDownloadButton>button {
             background-color: #6A327E !important;
             color: #FFFFFF !important;
             border-radius: 8px !important;
             font-weight: 800 !important;
             border: none !important;
-            padding: 1rem 2rem !important;
-            font-size: 1.3rem !important;
-            margin-top: 0.8rem !important;
+            padding: 1.2rem 2.5rem !important;
+            font-size: 1.4rem !important;
+            margin-top: 1rem !important;
             box-shadow: 0px 4px 10px rgba(0,0,0,0.2) !important;
         }
         .stButton>button p, .stDownloadButton>button p {
             color: #FFFFFF !important;
-            font-size: 1.3rem !important;
+            font-size: 1.4rem !important;
             font-weight: 800 !important;
         }
         .stButton>button:hover, .stDownloadButton>button:hover {
@@ -142,16 +142,16 @@ st.markdown("""
 
         /* ABAS SUPERIORES */
         .stTabs [data-baseweb="tab-list"] {
-            gap: 12px !important;
-            margin-bottom: 1.5rem !important;
+            gap: 15px !important;
+            margin-bottom: 1.8rem !important;
         }
         .stTabs [data-baseweb="tab"] {
-            height: 52px !important;
-            padding: 0px 24px !important;
+            height: 58px !important;
+            padding: 0px 28px !important;
             background-color: #D6C2E2 !important;
             border-radius: 8px 8px 0px 0px !important;
             color: #3B1544 !important;
-            font-size: 1.25rem !important;
+            font-size: 1.35rem !important;
             font-weight: 800 !important;
         }
         .stTabs [aria-selected="true"] {
@@ -163,12 +163,12 @@ st.markdown("""
         [data-testid="stMetricValue"] {
             color: #4A2259 !important;
             font-weight: 800 !important;
-            font-size: 2.3rem !important;
+            font-size: 2.5rem !important;
         }
         [data-testid="stMetricLabel"] {
             color: #111111 !important;
             font-weight: 800 !important;
-            font-size: 1.2rem !important;
+            font-size: 1.3rem !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -350,10 +350,11 @@ if "banco_legisla_iss" not in st.session_state:
 
 if "log_atualizacoes" not in st.session_state:
     st.session_state["log_atualizacoes"] = [
-        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": "Estilização de alto contraste: Calendário ampliado, campos e tabelas em tema claro BWA."},
+        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": "Interface BWA: Ampliação geral das fontes e correção da tabela do recibo com fundo roxo e texto branco."},
         {"data": f"{DATA_CONSULTA} 14:30", "municipio": "Rio de Janeiro / RJ", "detalhe": "Regra do ISS Autônomo Fixo confirmada: Isenção de retenção na fonte quando cadastrado na Prefeitura."},
     ]
 
+# GERADOR DO DOCUMENTO DE RECIBO (COMPROVANTE FISCAL COM TEXTO EM BRANCO NO ROXO)
 def gerar_comprovante_rpa_bytes(res_dados: dict, rpa_input: RPAData) -> str:
     html_content = f"""
     <html>
@@ -361,14 +362,16 @@ def gerar_comprovante_rpa_bytes(res_dados: dict, rpa_input: RPAData) -> str:
         <meta charset="utf-8">
         <style>
             body {{ font-family: Arial, sans-serif; padding: 25px; color: #111; background-color: #ffffff; }}
-            .header {{ background-color: #6A327E; color: white; padding: 18px; text-align: center; border-radius: 6px; }}
-            .title {{ font-size: 18px; font-weight: bold; margin: 0; color: white; }}
-            .sub {{ font-size: 12px; margin-top: 5px; color: #E2D4EE; }}
+            .header {{ background-color: #6A327E; color: #ffffff !important; padding: 18px; text-align: center; border-radius: 6px; }}
+            .title {{ font-size: 18px; font-weight: bold; margin: 0; color: #ffffff !important; }}
+            .sub {{ font-size: 12px; margin-top: 5px; color: #E2D4EE !important; }}
             .section {{ font-size: 14px; font-weight: bold; color: #4A2259; margin-top: 20px; border-bottom: 2px solid #6A327E; padding-bottom: 3px; }}
             table {{ width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; background-color: #ffffff; }}
-            th, td {{ border: 1px solid #C4B0D8; padding: 8px; text-align: left; color: #000; }}
+            th, td {{ border: 1px solid #C4B0D8; padding: 8px; text-align: left; color: #000000; }}
             th {{ background-color: #EADFF0; color: #4A2259; font-weight: bold; }}
-            .tot {{ background-color: #6A327E; color: white; font-weight: bold; }}
+            /* VALOR LÍQUIDO EM BRANCO NO ROXO BWA */
+            .tot {{ background-color: #6A327E !important; color: #FFFFFF !important; font-weight: bold; }}
+            .tot td {{ color: #FFFFFF !important; background-color: #6A327E !important; }}
             .footer {{ margin-top: 40px; text-align: center; font-size: 11px; color: #555; }}
             .signature {{ margin-top: 60px; text-align: center; border-top: 1px solid #000; width: 60%; margin-left: 20%; padding-top: 5px; font-size: 13px; }}
         </style>
@@ -555,26 +558,24 @@ tabs = st.tabs([
     "⚙️ Tabela de ISS por Município"
 ])
 
-# --- TAB 1: ANÁLISE DE RPA ---
+# --- TAB 1: ANÁLISE DE RPA (REESTRUTURADO EM 2 COLUNAS AMPLAS) ---
 with tabs[0]:
-    col1, col2, col3 = st.columns([1, 1, 1])
+    col1, col2 = st.columns([1, 1])
     
     with col1:
-        st.markdown("**1. Dados Cadastrais (Opcionais)**")
+        st.markdown("### 1. Dados do Contrato e Prestador (Opcional)")
         nome = st.text_input("Nome do Prestador (Opcional)", value="", placeholder="ex: João da Silva")
         cpf = st.text_input("CPF do Prestador (Opcional)", value="", placeholder="ex: 12345678900")
         descricao = st.text_area("Descrição do Serviço (Opcional)", value="", placeholder="ex: Consultoria Técnica em TI")
         
-    with col2:
-        st.markdown("**2. Valores e Pagamento (Obrigatório)**")
         valor_bruto = st.number_input("Valor Bruto do RPA (R$)", min_value=0.0, value=0.0, step=100.0)
         data_pagamento = st.date_input("Data de Pagamento do RPA", value=datetime.date.today(), format="DD/MM/YYYY")
-        
+
+    with col2:
+        st.markdown("### 2. Enquadramento Territorial e Fiscal")
         opcoes_servicos = ["-- Selecione o Código do Serviço --"] + list(LISTA_SERVICOS_LC116_COMPLETA.keys())
         cod_servico_sel = st.selectbox("Código do Serviço (LC 116/03)", opcoes_servicos, index=0)
 
-    with col3:
-        st.markdown("**3. Enquadramento Territorial**")
         municipio_tomador = st.selectbox("Município do Tomador (Sua Empresa)", MUNICIPIOS_OPCOES, index=0)
         municipio_prestador = st.selectbox("Município de Domicílio do Prestador", MUNICIPIOS_OPCOES, index=0)
         municipio_execucao = st.selectbox("Município de Execução do Serviço", MUNICIPIOS_OPCOES, index=0)
@@ -641,7 +642,6 @@ with tabs[0]:
 
                 st.markdown("<br>", unsafe_allow_html=True)
                 
-                # EMISSÃO DE DOCUMENTO/PDF COMPROVANTE
                 doc_bytes = gerar_comprovante_rpa_bytes(res, rpa)
                 st.download_button(
                     label="📄 Emitir Recibo de RPA em PDF (Oficial)",
