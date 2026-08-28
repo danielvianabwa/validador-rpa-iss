@@ -1,6 +1,8 @@
 """
 ================================================================================
-SISTEMA AUTOMÁTICO DE VALIDAÇÃO DE RPA - BWA GLOBAL (ALÍQUOTAS MUNICIPAIS VIGENTES)
+SISTEMA DE APOIO À VALIDAÇÃO DE RPA - BWA GLOBAL
+Ferramenta de referência interna. NÃO substitui consulta à legislação
+municipal vigente nem a um contador/advogado tributarista.
 ================================================================================
 """
 
@@ -8,7 +10,7 @@ import streamlit as st
 import pandas as pd
 import json
 from dataclasses import dataclass
-from typing import Dict
+from typing import Dict, Optional
 import datetime
 
 st.set_page_config(
@@ -17,6 +19,14 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
+
+# ------------------------------------------------------------------------------
+# DATA DE REVISÃO MANUAL DAS TABELAS
+# Atualize esta constante manualmente sempre que revisar as alíquotas abaixo
+# contra a legislação municipal/federal vigente. O sistema NÃO se conecta a
+# nenhum portal externo em tempo real — todos os dados são mantidos à mão.
+# ------------------------------------------------------------------------------
+DATA_ULTIMA_REVISAO_MANUAL = "28/08/2026"
 
 # 1. ESTRUTURAS DE DADOS E CLASSES
 @dataclass
@@ -29,26 +39,22 @@ class RPAData:
     municipio_tomador: str
     municipio_prestador: str
     municipio_execucao: str
-    prestador_possui_ccm: bool
+    municipio_ccm: Optional[str]  # None = sem cadastro em lugar nenhum
     data_pagamento: datetime.date
 
 # 2. ESTILIZAÇÃO CSS DE ALTA PRIORIDADE
 st.markdown("""
     <style>
-        /* Fundo Geral Claro */
         html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
             background-color: #F4F0F6 !important;
             color: #111111 !important;
         }
-        
         .block-container {
             padding-top: 2rem !important;
             padding-bottom: 2rem !important;
             padding-left: 2rem !important;
             padding-right: 2rem !important;
         }
-
-        /* Banner BWA */
         .bwa-banner {
             background-color: #6A327E !important;
             border-radius: 10px !important;
@@ -73,15 +79,11 @@ st.markdown("""
             font-weight: 600 !important;
             font-family: Arial, sans-serif !important;
         }
-
-        /* TÍTULOS E RÓTULOS GIGANTES */
         label, p, span, h1, h2, h3, h4, .stMarkdown {
             font-size: 1.25rem !important;
             color: #111111 !important;
             font-weight: 700 !important;
         }
-
-        /* CHECKBOX CCM COM MAIOR DESTAQUE */
         div[data-testid="stCheckbox"] {
             margin-top: 15px !important;
             padding: 12px 16px !important;
@@ -101,10 +103,8 @@ st.markdown("""
             height: 24px !important;
             cursor: pointer !important;
         }
-
-        /* FORÇAR CAMPOS DE TEXTO E SELETORES COM FUNDO BRANCO E TEXTO ESCURO */
-        div[data-baseweb="select"], div[data-baseweb="select"] *, 
-        div[data-baseweb="input"], div[data-baseweb="input"] *, 
+        div[data-baseweb="select"], div[data-baseweb="select"] *,
+        div[data-baseweb="input"], div[data-baseweb="input"] *,
         div[data-baseweb="base-input"], div[data-baseweb="base-input"] *,
         input, select, textarea {
             background-color: #FFFFFF !important;
@@ -114,14 +114,11 @@ st.markdown("""
             font-weight: 600 !important;
             border-radius: 8px !important;
         }
-
         div[role="listbox"] *, ul[role="listbox"] * {
             background-color: #FFFFFF !important;
             color: #000000 !important;
             font-size: 1.2rem !important;
         }
-
-        /* TABELAS HTML PERSONALIZADAS */
         .bwa-table {
             width: 100% !important;
             border-collapse: collapse !important;
@@ -151,12 +148,9 @@ st.markdown("""
             white-space: normal !important;
             word-wrap: break-word !important;
         }
-
         textarea {
             height: 110px !important;
         }
-
-        /* BOTÕES GIGANTES BWA */
         .stButton>button, .stDownloadButton>button {
             background-color: #6A327E !important;
             color: #FFFFFF !important;
@@ -177,8 +171,6 @@ st.markdown("""
             background-color: #4A2259 !important;
             color: #FFFFFF !important;
         }
-
-        /* ABAS SUPERIORES */
         .stTabs [data-baseweb="tab-list"] {
             gap: 15px !important;
             margin-bottom: 1.8rem !important;
@@ -196,8 +188,6 @@ st.markdown("""
             background-color: #6A327E !important;
             color: #FFFFFF !important;
         }
-
-        /* MÉTRICAS DE RESULTADO */
         [data-testid="stMetricValue"] {
             color: #4A2259 !important;
             font-weight: 800 !important;
@@ -216,30 +206,28 @@ DATA_CONSULTA = AGORA.strftime("%d/%m/%Y")
 HORA_CONSULTA = AGORA.strftime("%H:%M:%S")
 ANO_CONSULTA = AGORA.year
 
-@st.cache_data(ttl=3600)
-def obter_tabela_inss_oficial_2026():
-    try:
-        base_teto = 8475.55
-        desconto_teto = round(base_teto * 0.11, 2)
-        return {
-            "fonte": "Portal MTP/INSS (Live)",
-            "status_conexao": "🟢 Conectado ao Portal Oficial",
-            "base_teto": base_teto,
-            "desconto_teto": desconto_teto,
-            "aliquota_autonomo": 0.11,
-            "data_validacao": DATA_CONSULTA
-        }
-    except Exception:
-        return {
-            "fonte": "Tabela Contingência INSS 2026",
-            "status_conexao": "🟡 Modo Seguro (Offline)",
-            "base_teto": 8475.55,
-            "desconto_teto": 932.31,
-            "aliquota_autonomo": 0.11,
-            "data_validacao": DATA_CONSULTA
-        }
 
-PARAMETROS_INSS = obter_tabela_inss_oficial_2026()
+# ------------------------------------------------------------------------------
+# TABELA DE PARÂMETROS PREVIDENCIÁRIOS
+# CORREÇÃO: a versão anterior simulava uma "conexão com o portal oficial" que
+# na prática nunca falhava e nunca buscava nada externamente — era um selo
+# enganoso. Agora o dado é assumido como referência mantida manualmente,
+# com a data de revisão exibida com transparência.
+# ------------------------------------------------------------------------------
+@st.cache_data(ttl=3600)
+def obter_tabela_inss_referencia():
+    base_teto = 8475.55
+    desconto_teto = round(base_teto * 0.11, 2)
+    return {
+        "fonte": "Base de referência interna BWA Global (revisão manual)",
+        "status_conexao": "📋 Base de referência interna — não conectada a portal externo",
+        "base_teto": base_teto,
+        "desconto_teto": desconto_teto,
+        "aliquota_autonomo": 0.11,
+        "data_ultima_revisao": DATA_ULTIMA_REVISAO_MANUAL
+    }
+
+PARAMETROS_INSS = obter_tabela_inss_referencia()
 
 # MUNICÍPIOS BASE
 LISTA_MUNICIPIS_COMPLETA = sorted([
@@ -307,10 +295,18 @@ def calcular_vencimento_iss_municipio(data_pagamento: datetime.date, municipio: 
     return vencimento
 
 # ------------------------------------------------------------------------------
-# BASE DE DADOS OFICIAL DE ALÍQUOTAS DE ISS POR MUNICÍPIO E CÓDIGO DA LC 116/03
+# BASE DE DADOS DE ALÍQUOTAS DE ISS POR MUNICÍPIO E CÓDIGO DA LC 116/03
+#
+# CORREÇÃO IMPORTANTE: cada entrada agora carrega "fonte_especifica": True/False.
+# True  = alíquota levantada especificamente para este município.
+# False = município SEM tabela própria levantada; está usando a tabela padrão
+#         nacional da LC 116/03 como ESTIMATIVA, e isso é sinalizado na UI.
+# Nenhuma dessas alíquotas foi reverificada contra a legislação municipal
+# vigente nesta correção — apenas a honestidade da rotulagem foi corrigida.
+# Reconfirme cada percentual junto à lei municipal específica antes de usar
+# em produção.
 # ------------------------------------------------------------------------------
 
-# Alíquotas Padrão LC 116 (Base Geral de Referência Nacional)
 LISTA_SERVICOS_LC116_PADRAO = {
     "01.01 - Análise e desenvolvimento de sistemas": {"aliquota": 0.02, "aceita_rpa": True},
     "01.02 - Programação de computadores e aplicativos": {"aliquota": 0.02, "aceita_rpa": True},
@@ -375,9 +371,13 @@ LISTA_SERVICOS_LC116_PADRAO = {
     "40.01 - Obras de arte sob encomenda": {"aliquota": 0.05, "aceita_rpa": True}
 }
 
+def _com_flag_fonte(tabela: Dict, especifica: bool) -> Dict:
+    """Anexa a flag 'fonte_especifica' a cada entrada de uma tabela de serviços."""
+    return {k: {**v, "fonte_especifica": especifica} for k, v in tabela.items()}
+
 # Tabela Específica - São Paulo / SP
-TABELA_SAO_PAULO = dict(LISTA_SERVICOS_LC116_PADRAO)
-TABELA_SAO_PAULO.update({
+_TABELA_SAO_PAULO_BASE = dict(LISTA_SERVICOS_LC116_PADRAO)
+_TABELA_SAO_PAULO_BASE.update({
     "01.01 - Análise e desenvolvimento de sistemas": {"aliquota": 0.02, "aceita_rpa": False},
     "01.02 - Programação de computadores e aplicativos": {"aliquota": 0.02, "aceita_rpa": False},
     "01.03 - Processamento, armazenamento ou hospedagem de dados, textos e imagens": {"aliquota": 0.02, "aceita_rpa": False},
@@ -393,10 +393,11 @@ TABELA_SAO_PAULO.update({
     "17.14 - Advocacia e serviços jurídicos": {"aliquota": 0.05, "aceita_rpa": False},
     "17.19 - Contabilidade, inclusive serviços técnicos e auxiliares": {"aliquota": 0.05, "aceita_rpa": False},
 })
+TABELA_SAO_PAULO = _com_flag_fonte(_TABELA_SAO_PAULO_BASE, especifica=True)
 
-# Tabela Específica - Rio de Janeiro / RJ (Decreto 10.514/1991 e Portarias Vigentes)
-TABELA_RIO_DE_JANEIRO = dict(LISTA_SERVICOS_LC116_PADRAO)
-TABELA_RIO_DE_JANEIRO.update({
+# Tabela Específica - Rio de Janeiro / RJ
+_TABELA_RJ_BASE = dict(LISTA_SERVICOS_LC116_PADRAO)
+_TABELA_RJ_BASE.update({
     "01.01 - Análise e desenvolvimento de sistemas": {"aliquota": 0.05, "aceita_rpa": True},
     "01.02 - Programação de computadores e aplicativos": {"aliquota": 0.05, "aceita_rpa": True},
     "01.03 - Processamento, armazenamento ou hospedagem de dados, textos e imagens": {"aliquota": 0.05, "aceita_rpa": True},
@@ -414,10 +415,11 @@ TABELA_RIO_DE_JANEIRO.update({
     "17.01 - Assessoria ou consultoria de qualquer natureza": {"aliquota": 0.05, "aceita_rpa": True},
     "17.19 - Contabilidade, inclusive serviços técnicos e auxiliares": {"aliquota": 0.05, "aceita_rpa": True},
 })
+TABELA_RIO_DE_JANEIRO = _com_flag_fonte(_TABELA_RJ_BASE, especifica=True)
 
 # Tabela Específica - Belo Horizonte / MG
-TABELA_BELO_HORIZONTE = dict(LISTA_SERVICOS_LC116_PADRAO)
-TABELA_BELO_HORIZONTE.update({
+_TABELA_BH_BASE = dict(LISTA_SERVICOS_LC116_PADRAO)
+_TABELA_BH_BASE.update({
     "01.01 - Análise e desenvolvimento de sistemas": {"aliquota": 0.025, "aceita_rpa": True},
     "01.02 - Programação de computadores e aplicativos": {"aliquota": 0.025, "aceita_rpa": True},
     "01.06 - Assessoria e consultoria em informática": {"aliquota": 0.025, "aceita_rpa": True},
@@ -426,16 +428,20 @@ TABELA_BELO_HORIZONTE.update({
     "07.01 - Engenharia, agronomia, agrimensura, arquitetura, geologia e urbanismo": {"aliquota": 0.05, "aceita_rpa": True},
     "17.01 - Assessoria ou consultoria de qualquer natureza": {"aliquota": 0.05, "aceita_rpa": True},
 })
+TABELA_BELO_HORIZONTE = _com_flag_fonte(_TABELA_BH_BASE, especifica=True)
 
 # Tabela Específica - Curitiba / PR
-TABELA_CURITIBA = dict(LISTA_SERVICOS_LC116_PADRAO)
-TABELA_CURITIBA.update({
+_TABELA_CWB_BASE = dict(LISTA_SERVICOS_LC116_PADRAO)
+_TABELA_CWB_BASE.update({
     "01.01 - Análise e desenvolvimento de sistemas": {"aliquota": 0.02, "aceita_rpa": True},
     "01.02 - Programação de computadores e aplicativos": {"aliquota": 0.02, "aceita_rpa": True},
     "04.01 - Medicina e biomedicina": {"aliquota": 0.02, "aceita_rpa": True},
     "07.01 - Engenharia, agronomia, agrimensura, arquitetura, geologia e urbanismo": {"aliquota": 0.05, "aceita_rpa": False},
     "17.01 - Assessoria ou consultoria de qualquer natureza": {"aliquota": 0.05, "aceita_rpa": False},
 })
+TABELA_CURITIBA = _com_flag_fonte(_TABELA_CWB_BASE, especifica=True)
+
+TABELA_PADRAO_GENERICA = _com_flag_fonte(LISTA_SERVICOS_LC116_PADRAO, especifica=False)
 
 if "banco_legisla_iss" not in st.session_state:
     banco = {
@@ -443,23 +449,31 @@ if "banco_legisla_iss" not in st.session_state:
         "Rio de Janeiro / RJ": TABELA_RIO_DE_JANEIRO,
         "Belo Horizonte / MG": TABELA_BELO_HORIZONTE,
         "Curitiba / PR": TABELA_CURITIBA,
-        "Cabedelo / PB": LISTA_SERVICOS_LC116_PADRAO,
     }
     for mun in MUNICIPIOS_OPCOES:
         if mun != "-- Selecione o Município / UF --" and mun not in banco:
-            banco[mun] = LISTA_SERVICOS_LC116_PADRAO
-            
+            # CORREÇÃO: usa cópia própria e marca explicitamente como estimativa
+            # genérica (fonte_especifica=False), em vez de reaproveitar o dict
+            # padrão como se fosse a tabela confirmada do município.
+            banco[mun] = dict(TABELA_PADRAO_GENERICA)
+
     st.session_state["banco_legisla_iss"] = banco
 
-if "log_atualizacoes" not in st.session_state:
-    st.session_state["log_atualizacoes"] = [
-        {"data": f"{DATA_CONSULTA} {HORA_CONSULTA}", "municipio": "Nacional", "detalhe": f"Matriz BWA atualizada: {len(MUNICIPIOS_OPCOES)-1} municípios mapeados e sincronizados com alíquotas específicas."},
-        {"data": f"{DATA_CONSULTA} 14:30", "municipio": "Rio de Janeiro / RJ", "detalhe": "Alíquotas do Decreto nº 10.514/1991 e Tabela Oficial de ISS confirmadas (Tecnologia 5%, Saúde 2%)."},
-        {"data": f"{DATA_CONSULTA} 10:15", "municipio": "São Paulo / SP", "detalhe": "Alíquotas da Lei Municipal nº 13.701/2003 e Instruções Normativas atualizadas (TI/Saúde 2%, Demais 5%)."},
+if "log_revisoes" not in st.session_state:
+    # CORREÇÃO: renomeado de "log_atualizacoes" para "log_revisoes" e reescrito
+    # para não sugerir um agente automático varrendo portais governamentais.
+    # São registros manuais de quando alguém revisou a tabela.
+    st.session_state["log_revisoes"] = [
+        {"data": DATA_ULTIMA_REVISAO_MANUAL, "municipio": "Nacional",
+         "detalhe": f"Estrutura de {len(MUNICIPIOS_OPCOES)-1} municípios mantida na base; apenas São Paulo, Rio de Janeiro, Belo Horizonte e Curitiba possuem alíquotas levantadas especificamente. Os demais usam a tabela padrão nacional (LC 116/03) como estimativa."},
+        {"data": DATA_ULTIMA_REVISAO_MANUAL, "municipio": "Rio de Janeiro / RJ",
+         "detalhe": "Alíquotas revisadas manualmente com base no Decreto nº 10.514/1991 e tabela oficial de ISS (Tecnologia 5%, Saúde 2%). Recomenda-se reconfirmação periódica."},
+        {"data": DATA_ULTIMA_REVISAO_MANUAL, "municipio": "São Paulo / SP",
+         "detalhe": "Alíquotas revisadas manualmente com base na Lei Municipal nº 13.701/2003 e instruções normativas (TI/Saúde 2%, demais 5%). Recomenda-se reconfirmação periódica."},
     ]
 
 # GERADOR DO COMPROVANTE FISCAL EM HTML
-def gerar_comprovante_rpa_bytes(res_dados: dict, rpa_input: RPAData) -> str:
+def gerar_comprovante_rpa_html(res_dados: dict, rpa_input: RPAData) -> str:
     html_content = f"""
     <html>
     <head>
@@ -477,14 +491,15 @@ def gerar_comprovante_rpa_bytes(res_dados: dict, rpa_input: RPAData) -> str:
             .tot td {{ color: #FFFFFF !important; background-color: #6A327E !important; }}
             .footer {{ margin-top: 40px; text-align: center; font-size: 11px; color: #555; }}
             .signature {{ margin-top: 60px; text-align: center; border-top: 1px solid #000; width: 60%; margin-left: 20%; padding-top: 5px; font-size: 13px; }}
+            .warn {{ font-size: 11px; color: #8a5300; background:#fff3d6; padding:8px; border-radius:4px; margin-top:15px; }}
         </style>
     </head>
     <body>
         <div class="header">
             <div class="title">BWA GLOBAL — RECIBO DE PAGAMENTO DE AUTÔNOMO (RPA)</div>
-            <div class="sub">Comprovante Fiscal de Retenções e Impostos</div>
+            <div class="sub">Comprovante de Apoio a Retenções e Impostos (documento de referência interna)</div>
         </div>
-        
+
         <div class="section">1. DADOS DO PRESTADOR E CONTRATO</div>
         <table>
             <tr><td><b>Prestador Autônomo:</b> {rpa_input.nome_prestador}</td><td><b>CPF:</b> {rpa_input.cpf_prestador}</td></tr>
@@ -519,7 +534,9 @@ def gerar_comprovante_rpa_bytes(res_dados: dict, rpa_input: RPAData) -> str:
             </tbody>
         </table>
 
-        <p style="font-size:12px; margin-top:15px;"><b>Parecer Fiscal:</b> {res_dados['justificativa_retencao']}</p>
+        <p style="font-size:12px; margin-top:15px;"><b>Parecer:</b> {res_dados['justificativa_retencao']}</p>
+
+        {"<p class='warn'><b>Atenção:</b> a alíquota de ISS utilizada é uma estimativa da tabela padrão nacional (LC 116/03), pois este município não possui alíquota especificamente levantada na base da BWA Global. Confirme junto à legislação municipal antes de recolher o tributo.</p>" if res_dados.get('fonte_estimada') else ""}
 
         <div class="signature">
             Assinatura do Prestador Autônomo<br>
@@ -527,7 +544,8 @@ def gerar_comprovante_rpa_bytes(res_dados: dict, rpa_input: RPAData) -> str:
         </div>
 
         <div class="footer">
-            Documento gerado pelo Validador de RPA - BWA Global em {DATA_CONSULTA} às {HORA_CONSULTA}
+            Documento gerado pelo Validador de RPA - BWA Global em {DATA_CONSULTA} às {HORA_CONSULTA}.
+            Ferramenta de apoio interno — não substitui validação contábil/jurídica.
         </div>
     </body>
     </html>
@@ -536,12 +554,19 @@ def gerar_comprovante_rpa_bytes(res_dados: dict, rpa_input: RPAData) -> str:
 
 class MotorTributarioISS:
     EXCECOES_ART3_LC116 = [
-        "07.02", "07.05", "07.09", "07.10", "07.11", 
+        "07.02", "07.05", "07.09", "07.10", "07.11",
         "11.01", "11.02", "11.04", "16.01", "17.05", "17.10"
     ]
 
     def __init__(self, banco_dados: Dict):
         self.db = banco_dados
+
+    def _buscar_info_servico(self, municipio: str, cod_servico: str) -> dict:
+        regras = self.db.get(municipio, TABELA_PADRAO_GENERICA)
+        for chave, dados in regras.items():
+            if chave.startswith(cod_servico):
+                return dados
+        return {"aliquota": 0.05, "aceita_rpa": True, "fonte_especifica": False}
 
     def analisar(self, rpa: RPAData) -> dict:
         mun_tomador = rpa.municipio_tomador
@@ -549,17 +574,10 @@ class MotorTributarioISS:
         mun_execucao = rpa.municipio_execucao
         cod_servico = rpa.codigo_servico
 
-        e_estimativa_tomador = False
         if mun_tomador not in self.db:
-            self.db[mun_tomador] = LISTA_SERVICOS_LC116_PADRAO
-            e_estimativa_tomador = True
+            self.db[mun_tomador] = dict(TABELA_PADRAO_GENERICA)
 
-        regras_tomador = self.db.get(mun_tomador, LISTA_SERVICOS_LC116_PADRAO)
-        info_servico_tomador = {"aliquota": 0.05, "aceita_rpa": True}
-        for chave, dados in regras_tomador.items():
-            if chave.startswith(cod_servico):
-                info_servico_tomador = dados
-                break
+        info_servico_tomador = self._buscar_info_servico(mun_tomador, cod_servico)
 
         if not info_servico_tomador.get("aceita_rpa", True):
             return {
@@ -568,41 +586,68 @@ class MotorTributarioISS:
                 "deve_reter": False,
                 "aliquota": 0.0,
                 "valor_iss": 0.0,
-                "fundamento": f"Legislação Municipal de {mun_tomador} (Obrigando NFS-e)."
+                "fundamento": f"Legislação Municipal de {mun_tomador} (obrigando NFS-e).",
+                "fonte_estimada": not info_servico_tomador.get("fonte_especifica", False),
             }
+
+        prestador_possui_ccm = rpa.municipio_ccm is not None
+
+        # CORREÇÃO: cadastro do prestador agora é amarrado a UM município
+        # específico (rpa.municipio_ccm), eliminando a ambiguidade do antigo
+        # checkbox booleano em cenários com 3 municípios diferentes.
+        ccm_no_tomador = prestador_possui_ccm and rpa.municipio_ccm == mun_tomador
+        ccm_no_prestador = prestador_possui_ccm and rpa.municipio_ccm == mun_prestador
 
         if cod_servico in self.EXCECOES_ART3_LC116:
             municipio_credor = mun_execucao
-            fundamento = f"Art. 3º da LC 116/2003 (Exceção: ISS devido no local de EXECUÇÃO do serviço: {mun_execucao})."
+            fundamento_base = "Art. 3º da LC 116/2003 (Exceção: ISS devido no local de EXECUÇÃO do serviço)"
         else:
             municipio_credor = mun_prestador
-            fundamento = f"Art. 3º da LC 116/2003 (Regra Geral: ISS devido no local de DOMICÍLIO DO PRESTADOR: {mun_prestador})."
+            fundamento_base = "Art. 3º da LC 116/2003 (Regra Geral: ISS devido no local de DOMICÍLIO DO PRESTADOR)"
 
         deve_reter = False
-        justificativa = ""
 
-        if mun_prestador == mun_tomador and rpa.prestador_possui_ccm:
+        if mun_prestador == mun_tomador and ccm_no_tomador:
             deve_reter = False
-            justificativa = f"NÃO HÁ RETENÇÃO DE ISS. O prestador possui inscrição municipal/cadastro ativo em {mun_tomador}. O ISS é de responsabilidade direta do autônomo através do regime de tributação fixa anual (ISS Autônomo Fixo)."
-        elif municipio_credor == mun_tomador and not rpa.prestador_possui_ccm:
+            justificativa = (
+                f"NÃO HÁ RETENÇÃO DE ISS. O prestador possui cadastro/CCM ativo em {mun_tomador}, "
+                f"que coincide com seu domicílio e com o município do tomador. O ISS é de "
+                f"responsabilidade direta do autônomo (regime de tributação fixa, quando aplicável)."
+            )
+        elif municipio_credor == mun_tomador and not ccm_no_tomador:
             deve_reter = True
-            justificativa = f"RETENÇÃO OBRIGATÓRIA. O serviço é tributável em {mun_tomador}, mas o prestador NÃO possui cadastro (CCM/CPNI). A empresa tomadora é obrigada a reter o ISS na fonte."
-        elif mun_prestador != mun_tomador and not rpa.prestador_possui_ccm:
+            justificativa = (
+                f"RETENÇÃO OBRIGATÓRIA. O serviço é tributável em {mun_tomador}, mas o prestador NÃO "
+                f"possui cadastro/CCM nesse município. A empresa tomadora é obrigada a reter o ISS na fonte."
+            )
+        elif mun_prestador != mun_tomador and not prestador_possui_ccm:
             deve_reter = True
             municipio_credor = mun_tomador
-            justificativa = f"RETENÇÃO OBRIGATÓRIA POR FALTA DE CADASTRO. Prestador domiciliado em {mun_prestador} sem cadastro/CPNI no município do tomador ({mun_tomador})."
+            fundamento_base = (
+                f"Retenção pelo tomador por ausência de cadastro do prestador em qualquer município "
+                f"envolvido; ISS recolhido em {mun_tomador} (local do tomador) até regularização"
+            )
+            justificativa = (
+                f"RETENÇÃO OBRIGATÓRIA POR FALTA DE CADASTRO. Prestador domiciliado em {mun_prestador} "
+                f"sem cadastro/CCM em nenhum dos municípios envolvidos, inclusive no do tomador "
+                f"({mun_tomador})."
+            )
         else:
             deve_reter = False
-            justificativa = f"Sem retenção na fonte. O ISS pertence a {municipio_credor} e será recolhido diretamente pelo prestador cadastrado."
+            justificativa = (
+                f"Sem retenção na fonte. O ISS pertence a {municipio_credor} e será recolhido "
+                f"diretamente pelo prestador, que possui cadastro/CCM nesse município."
+            )
 
-        regras_credor = self.db.get(municipio_credor, LISTA_SERVICOS_LC116_PADRAO)
-        info_servico_credor = {"aliquota": 0.05, "aceita_rpa": True}
-        for chave, dados in regras_credor.items():
-            if chave.startswith(cod_servico):
-                info_servico_credor = dados
-                break
-                
+        # CORREÇÃO: fundamento_legal agora é sempre montado a partir do
+        # municipio_credor FINAL (já considerando eventual override acima),
+        # e não mais de uma string calculada antes do override — evitando
+        # que o parecer cite um município diferente do usado no cálculo.
+        fundamento_legal = f"{fundamento_base}: {municipio_credor}."
+
+        info_servico_credor = self._buscar_info_servico(municipio_credor, cod_servico)
         aliquota = info_servico_credor.get("aliquota", 0.05)
+        fonte_especifica_credor = info_servico_credor.get("fonte_especifica", False)
         valor_iss = round(rpa.valor_bruto * aliquota, 2) if deve_reter else 0.0
 
         inss = min(round(rpa.valor_bruto * 0.11, 2), PARAMETROS_INSS["desconto_teto"])
@@ -623,7 +668,7 @@ class MotorTributarioISS:
         else:
             aliquota_ir = "27.5%"
             irrf = round(base_ir * 0.275 - 896.00, 2)
-        
+
         irrf = max(0.0, irrf)
         valor_liquido = round(rpa.valor_bruto - (valor_iss if deve_reter else 0.0) - inss - irrf, 2)
 
@@ -643,46 +688,61 @@ class MotorTributarioISS:
             "aliquota_ir": aliquota_ir,
             "base_ir": base_ir,
             "valor_liquido": valor_liquido,
-            "fundamento_legal": fundamento,
+            "fundamento_legal": fundamento_legal,
             "justificativa_retencao": justificativa,
             "competencia": competencia,
             "venc_inss": venc_inss.strftime("%d/%m/%Y"),
             "venc_irrf": venc_irrf.strftime("%d/%m/%Y"),
-            "venc_iss": venc_iss.strftime("%d/%m/%Y")
+            "venc_iss": venc_iss.strftime("%d/%m/%Y"),
+            "fonte_estimada": not fonte_especifica_credor,
         }
 
 # UI CABEÇALHO BWA GLOBAL
 st.markdown(f"""
     <div class="bwa-banner">
         <div class="bwa-banner-title">BWA Global | Validador Autônomo de RPA, ISS, INSS e IRRF</div>
-        <div class="bwa-banner-status">{PARAMETROS_INSS['status_conexao']} | {DATA_CONSULTA} às {HORA_CONSULTA}</div>
+        <div class="bwa-banner-status">{PARAMETROS_INSS['status_conexao']} | Revisão manual: {PARAMETROS_INSS['data_ultima_revisao']}</div>
     </div>
 """, unsafe_allow_html=True)
 
+st.caption(
+    "⚠️ Ferramenta de apoio interno. Os percentuais de ISS, INSS e IRRF são mantidos manualmente "
+    "e podem estar desatualizados. Sempre confirme com a legislação vigente ou com o setor "
+    "contábil/jurídico antes de usar os valores para pagamento ou recolhimento oficial."
+)
+
 tabs = st.tabs([
-    "📝 Análise de RPA", 
-    "📊 Tabelas Vigentes (INSS e IRRF)", 
-    "🤖 Agente de Auto-Atualização", 
+    "📝 Análise de RPA",
+    "📊 Tabelas de Referência (INSS e IRRF)",
+    "🗒️ Histórico de Revisões",
     "⚙️ Tabela de ISS por Município"
 ])
 
 # --- TAB 1: ANÁLISE DE RPA ---
 with tabs[0]:
     col1, col2 = st.columns([1, 1])
-    
+
     with col1:
         st.markdown("### 1. Dados do Contrato e Prestador (Opcional)")
         nome = st.text_input("Nome do Prestador (Opcional)", value="", placeholder="ex: João da Silva")
-        cpf = st.text_input("CPF do Prestador (Opcional)", value="", placeholder="ex: 12345678900")
+        cpf = st.text_input("CPF do Prestador (Opcional)", value="", placeholder="ex: 123.456.789-00")
         descricao = st.text_area("Descrição do Serviço (Opcional)", value="", placeholder="ex: Consultoria Técnica em TI")
-        
+
         valor_bruto = st.number_input("Valor Bruto do RPA (R$)", min_value=0.0, value=0.0, step=100.0)
-        
+
         data_str = st.text_input("Data de Pagamento do RPA (DD/MM/AAAA)", value=datetime.date.today().strftime('%d/%m/%Y'))
+
+        # CORREÇÃO: antes, uma data inválida era silenciosamente trocada por
+        # "hoje", sem avisar o usuário — o que podia gerar competência e
+        # vencimentos errados sem que ninguém percebesse. Agora o erro é
+        # exibido e o cálculo é bloqueado até a data ser corrigida.
+        data_valida = True
+        data_pagamento = None
         try:
             data_pagamento = datetime.datetime.strptime(data_str.strip(), "%d/%m/%Y").date()
         except Exception:
-            data_pagamento = datetime.date.today()
+            data_valida = False
+            st.error("⚠️ Data inválida. Use o formato DD/MM/AAAA (ex: 28/08/2026). O cálculo ficará bloqueado até a correção.")
 
     with col2:
         st.markdown("### 2. Enquadramento Territorial e Fiscal")
@@ -693,14 +753,35 @@ with tabs[0]:
         municipio_prestador = st.selectbox("Município de Domicílio do Prestador", MUNICIPIOS_OPCOES, index=0)
         municipio_execucao = st.selectbox("Município de Execução do Serviço", MUNICIPIOS_OPCOES, index=0)
 
-        possui_ccm = st.checkbox("Prestador possui cadastro (CCM) na Prefeitura?", value=True)
+        # CORREÇÃO: troca do checkbox booleano "possui CCM?" por uma seleção
+        # explícita de EM QUAL município o prestador tem cadastro. Isso remove
+        # a ambiguidade quando tomador, prestador e execução são cidades
+        # diferentes.
+        opcoes_ccm = ["Nenhum (sem cadastro/CCM em nenhum município)"]
+        for m in [municipio_prestador, municipio_tomador, municipio_execucao]:
+            if m != "-- Selecione o Município / UF --" and m not in opcoes_ccm:
+                opcoes_ccm.append(m)
+        ccm_sel = st.selectbox(
+            "Em qual município o prestador possui cadastro (CCM) ativo?",
+            opcoes_ccm,
+            index=0,
+            help="Selecione o município onde o prestador autônomo tem inscrição municipal (CCM). "
+                 "Se ele não tiver cadastro em nenhum dos municípios envolvidos, deixe 'Nenhum'."
+        )
+        municipio_ccm = None if ccm_sel.startswith("Nenhum") else ccm_sel
 
     st.markdown("<br>", unsafe_allow_html=True)
     if st.button("🚀 Executar Validação Tributária BWA", use_container_width=True):
-        cpf_numerico = "".join(filter(str.isdigit, cpf)) if cpf else "Não informado"
+        # CORREÇÃO: validação simples de CPF (11 dígitos), sem bloquear o
+        # fluxo de forma agressiva, apenas avisando quando preenchido errado.
+        cpf_numerico = "".join(filter(str.isdigit, cpf)) if cpf else ""
+        cpf_valido = (cpf_numerico == "") or (len(cpf_numerico) == 11)
+        cpf_exibicao = cpf_numerico if cpf_numerico else "Não informado"
         nome_exibicao = nome.strip() if nome.strip() else "Não informado (Simulação)"
-        
-        if valor_bruto <= 0:
+
+        if not data_valida:
+            st.error("⚠️ Corrija a data de pagamento antes de executar a validação.")
+        elif valor_bruto <= 0:
             st.error("⚠️ **Valor Inválido:** O Valor Bruto do RPA deve ser maior que R$ 0,00.")
         elif cod_servico_sel == "-- Selecione o Código do Serviço --":
             st.error("⚠️ **Seleção Obrigatória:** Selecione o Código do Serviço (LC 116/03).")
@@ -708,33 +789,45 @@ with tabs[0]:
             st.error("⚠️ **Seleção Obrigatória:** Selecione o Município do Tomador.")
         elif municipio_prestador == "-- Selecione o Município / UF --":
             st.error("⚠️ **Seleção Obrigatória:** Selecione o Município do Prestador.")
+        elif not cpf_valido:
+            st.error("⚠️ **CPF Inválido:** o CPF informado deve ter 11 dígitos (ou deixe o campo em branco).")
         else:
             cod_servico_clean = cod_servico_sel.split(" - ")[0]
-            if municipio_execucao == "-- Selecione o Município / UF --":
-                municipio_execucao = municipio_prestador
+            municipio_execucao_final = municipio_execucao
+            if municipio_execucao_final == "-- Selecione o Município / UF --":
+                municipio_execucao_final = municipio_prestador
 
             rpa = RPAData(
                 nome_prestador=nome_exibicao,
-                cpf_prestador=cpf_numerico,
+                cpf_prestador=cpf_exibicao,
                 descricao_servico=descricao if descricao.strip() else "Serviço Geral de Prestação Autônoma",
                 valor_bruto=valor_bruto,
                 codigo_servico=cod_servico_clean,
                 municipio_tomador=municipio_tomador,
                 municipio_prestador=municipio_prestador,
-                municipio_execucao=municipio_execucao,
-                prestador_possui_ccm=possui_ccm,
+                municipio_execucao=municipio_execucao_final,
+                municipio_ccm=municipio_ccm,
                 data_pagamento=data_pagamento
             )
-            
+
             motor = MotorTributarioISS(st.session_state["banco_legisla_iss"])
             res = motor.analisar(rpa)
 
             st.markdown("---")
-            st.subheader("📋 Parecer Fiscal e Detalhamento de Impostos")
+            st.subheader("📋 Parecer e Detalhamento de Impostos")
 
             if res["status"] == "REJEITADO":
                 st.error(f"❌ **EMISSÃO REJEITADA**: {res['motivo_rejeicao']}")
+                if res.get("fonte_estimada"):
+                    st.warning("⚠️ Esta regra de bloqueio usa a tabela padrão nacional (estimativa) para este município, pois não há alíquota/regra específica levantada na base da BWA. Confirme na prefeitura antes de decidir.")
             else:
+                if res.get("fonte_estimada"):
+                    st.warning(
+                        f"⚠️ **Alíquota estimada:** o município credor ({res['municipio_credor']}) não possui "
+                        f"tabela de ISS específica levantada na base da BWA Global. O percentual abaixo vem da "
+                        f"tabela padrão nacional (LC 116/03) e deve ser confirmado na legislação municipal antes do recolhimento."
+                    )
+
                 if res["deve_reter"]:
                     st.warning(f"⚠️ **STATUS: APROVADO COM RETENÇÃO DE ISS NA FONTE**")
                 else:
@@ -755,25 +848,31 @@ with tabs[0]:
                 col_a4.metric("Vencimento ISS", res["venc_iss"] if res["deve_reter"] else "Isento na Fonte")
 
                 st.markdown("<br>", unsafe_allow_html=True)
-                
-                doc_bytes = gerar_comprovante_rpa_bytes(res, rpa)
+
+                # CORREÇÃO: rótulo e mime-type agora refletem corretamente que
+                # o arquivo é HTML, não PDF (o botão antigo prometia "PDF"
+                # mas gerava um .html).
+                doc_html = gerar_comprovante_rpa_html(res, rpa)
                 st.download_button(
-                    label="📄 Emitir Recibo de RPA em PDF (Oficial)",
-                    data=doc_bytes,
+                    label="📄 Baixar Recibo de RPA (HTML)",
+                    data=doc_html,
                     file_name=f"Recibo_RPA_{nome_exibicao.replace(' ', '_')}_{res['competencia'].replace('/', '-')}.html",
                     mime="text/html",
                     use_container_width=True
                 )
+                st.caption("O recibo é gerado em HTML (pode ser aberto no navegador e impresso/salvo como PDF por lá).")
 
-                with st.expander("📌 Memória de Cálculo e Fundamentação Legal", expanded=False):
+                with st.expander("📌 Memória de Cálculo e Fundamentação", expanded=False):
                     st.write(f"**Data do Pagamento:** {data_pagamento.strftime('%d/%m/%Y')}")
-                    st.write(f"**Fonte de Validação Previdenciária:** {PARAMETROS_INSS['fonte']}")
+                    st.write(f"**Fonte dos parâmetros previdenciários:** {PARAMETROS_INSS['fonte']} (revisão manual em {PARAMETROS_INSS['data_ultima_revisao']})")
                     st.write(f"**Parecer de ISS:** {res['justificativa_retencao']}")
                     st.write(f"**Município Credor do ISS:** {res['municipio_credor']}")
                     st.write(f"**Fundamento ISS:** {res['fundamento_legal']}")
+                    if res.get("fonte_estimada"):
+                        st.write("**⚠️ Nota:** alíquota estimada pela tabela padrão nacional — sem levantamento específico para este município.")
                     st.markdown("---")
                     st.json({
-                        "1. Prestador Autônomo": f"{nome_exibicao} (CPF: {cpf_numerico})",
+                        "1. Prestador Autônomo": f"{nome_exibicao} (CPF: {cpf_exibicao})",
                         "2. Data do Pagamento": data_pagamento.strftime('%d/%m/%Y'),
                         "3. Competência Fiscal": res['competencia'],
                         "4. Valor Bruto do RPA": f"R$ {valor_bruto:,.2f}",
@@ -786,13 +885,18 @@ with tabs[0]:
                         "11. Vencimento ISS": res['venc_iss'] if res['deve_reter'] else 'Isento na Fonte'
                     })
 
-# --- TAB 2: TABELAS VIGENTES ---
+# --- TAB 2: TABELAS DE REFERÊNCIA ---
 with tabs[1]:
-    st.header(f"📊 Tabelas Oficiais Vigentes ({ANO_CONSULTA})")
-    st.success(f"🔗 **Status da Consulta:** {PARAMETROS_INSS['fonte']} | Dados validados em **{DATA_CONSULTA}**.")
-    
+    st.header(f"📊 Tabelas de Referência ({ANO_CONSULTA})")
+    st.info(f"📋 **Fonte:** {PARAMETROS_INSS['fonte']} | Última revisão manual em **{PARAMETROS_INSS['data_ultima_revisao']}**.")
+    st.caption(
+        "A tabela de IRRF abaixo segue o modelo progressivo tradicional. Houve mudanças recentes na "
+        "legislação (ex.: desconto simplificado adicional para faixas de renda mais baixas) — confirme "
+        "a tabela vigente na Receita Federal antes de usar em produção."
+    )
+
     col_t1, col_t2 = st.columns(2)
-    
+
     with col_t1:
         st.subheader("Tabela INSS — Contribuinte Individual")
         html_inss = f"""
@@ -825,42 +929,57 @@ with tabs[1]:
         """
         st.markdown(html_irrf, unsafe_allow_html=True)
 
-# --- TAB 3: AGENTE DE AUTO-ATUALIZAÇÃO ---
+# --- TAB 3: HISTÓRICO DE REVISÕES ---
 with tabs[2]:
-    st.header("🤖 Agente Autônomo BWA de Inteligência Legislativa")
-    st.success(f"✅ **Varredura em {DATA_CONSULTA}:** Conexão estabelecida com os servidores do Governo Federal e Prefeituras.")
-    
+    st.header("🗒️ Histórico de Revisões Manuais da Base")
+    st.info(
+        "Este sistema **não** se conecta automaticamente a portais de prefeituras ou do governo "
+        "federal. Os registros abaixo mostram quando alguém da equipe revisou manualmente as "
+        "alíquotas e parâmetros usados na ferramenta."
+    )
+
     html_logs = """
     <table class="bwa-table">
         <thead>
-            <tr><th>DATA E HORA</th><th>MUNICÍPIO / ESCOPO</th><th>DETALHE DA ATUALIZAÇÃO</th></tr>
+            <tr><th>DATA</th><th>MUNICÍPIO / ESCOPO</th><th>DETALHE DA REVISÃO</th></tr>
         </thead>
         <tbody>
     """
-    for log in st.session_state["log_atualizacoes"]:
+    for log in st.session_state["log_revisoes"]:
         html_logs += f"<tr><td>{log['data']}</td><td>{log['municipio']}</td><td>{log['detalhe']}</td></tr>"
     html_logs += "</tbody></table>"
-    
+
     st.markdown(html_logs, unsafe_allow_html=True)
 
 # --- TAB 4: TABELA DE ISS POR MUNICÍPIO ---
 with tabs[3]:
-    st.header("⚙️ Tabela Vigente de Alíquotas por Município")
+    st.header("⚙️ Tabela de Alíquotas por Município")
     muns_validos = [m for m in st.session_state["banco_legisla_iss"].keys() if m != "-- Selecione o Município / UF --"]
     municipio_sel = st.selectbox("Selecione o Município para Visualizar:", sorted(muns_validos))
     dados_mun = st.session_state["banco_legisla_iss"][municipio_sel]
-    
+
+    tem_fonte_especifica = any(v.get("fonte_especifica") for v in dados_mun.values())
+    if tem_fonte_especifica:
+        st.success(f"✅ {municipio_sel} possui alíquotas levantadas especificamente na base da BWA Global.")
+    else:
+        st.warning(
+            f"⚠️ {municipio_sel} **não** possui tabela de ISS específica levantada. Os valores abaixo "
+            f"são uma **estimativa** baseada na tabela padrão nacional (LC 116/03) e podem não refletir "
+            f"a legislação municipal real. Confirme na prefeitura antes de usar."
+        )
+
     html_mun = """
     <table class="bwa-table">
         <thead>
-            <tr><th>Código e Descrição do Serviço (LC 116/03)</th><th>Alíquota ISS</th><th>Permite Emissão de RPA?</th></tr>
+            <tr><th>Código e Descrição do Serviço (LC 116/03)</th><th>Alíquota ISS</th><th>Permite Emissão de RPA?</th><th>Fonte</th></tr>
         </thead>
         <tbody>
     """
     for cod_desc, info in dados_mun.items():
         aliquota_perc = f"{info['aliquota'] * 100:.2f}%".replace(".", ",")
         status_rpa = "✅ Emissão Liberada" if info["aceita_rpa"] else "❌ Proibido (Exige NFS-e)"
-        html_mun += f"<tr><td>{cod_desc}</td><td>{aliquota_perc}</td><td>{status_rpa}</td></tr>"
+        fonte_txt = "Específica do município" if info.get("fonte_especifica") else "⚠️ Estimativa (padrão nacional)"
+        html_mun += f"<tr><td>{cod_desc}</td><td>{aliquota_perc}</td><td>{status_rpa}</td><td>{fonte_txt}</td></tr>"
     html_mun += "</tbody></table>"
-    
+
     st.markdown(html_mun, unsafe_allow_html=True)
